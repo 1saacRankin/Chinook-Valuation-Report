@@ -51,38 +51,47 @@
 
 \begin{document}
 
-% Title Page
-\begin{titlepage}
-\centering
-\vspace*{1cm}
+% Title Page (no page number)
+\thispagestyle{empty}
+\pagenumbering{gobble}
+
+\begin{center}
+\vspace*{2cm}
 
 % Black rectangle with white text
 \colorbox{black}{%
-  \parbox{0.9\textwidth}{%
+  \parbox{0.95\textwidth}{%
     \centering
-    \vspace{0.5cm}
-    {\Huge\bfseries\textcolor{white}{Most Probable Selling Price Report}\par}
-    \vspace{0.5cm}
+    \vspace{0.8cm}
+    {\Huge\bfseries\textcolor{white}{Most Probable Selling Price}\par}
+    \vspace{0.2cm}
+    {\Huge\bfseries\textcolor{white}{Report}\par}
+    \vspace{0.8cm}
   }%
 }
 
-\vspace{1.5cm}
-
-{\LARGE\bfseries Persaj Countertops Inc.\par}
-\vspace{1cm}
-
-{\Large November 22, 2025\par}
 \vspace{2cm}
 
-\includegraphics[width=0.4\textwidth]{Chinook_logo.png}
+{\LARGE\bfseries Persaj Countertops Inc.\par}
+\vspace{0.5cm}
+
+{\Large November 22, 2025\par}
 
 \vfill
 
+\includegraphics[width=0.35\textwidth]{Chinook_logo.png}
+
+\vspace{1cm}
+
 {\large Chinook Business Advisory\par}
 
-\end{titlepage}
+\end{center}
 
-% Table of Contents
+\clearpage
+
+% Table of Contents (start page numbering at 2)
+\pagenumbering{arabic}
+\setcounter{page}{2}
 \tableofcontents
 \clearpage
 
@@ -132,11 +141,11 @@ An essential step in the review of a company is an analysis of its financial per
 
 The subject company's historical income statements have been adjusted by the User to present the business as if it had been managed to maximize profitability. Since private companies tend to keep reported profits and resulting taxes as low as possible, adjusting the financial statements is an important element to understanding the true earning capacity of the business.
 
-Adjustments include any fringe benefits the owner may have had, unusual circumstances, liens that will be paid off, as well as the standard adjustments used to determine Adjusted EBITDA (Earnings before Interest, Taxes, Depreciation, and Amortization). This will reflect a more realistic income for a new owner and allow a prospective purchaser to compare ``apples to apples''.
+Adjustments include any fringe benefits the owner may have had, unusual circumstances, liens that will be paid off, as well as the standard adjustments used to determine \textbf{Adjusted EBITDA} (Earnings before Interest, Taxes, Depreciation, and Amortization). This will reflect a more realistic income for a new owner and allow a prospective purchaser to compare ``apples to apples''.
 
 This adjusted profit is known as SDE (Seller's Discretionary Earnings). SDE could be defined as the total financial benefit available to a single person who owns and is fully employed in the operation of the business. Put another way, Adj. EBITDA = SDE minus a manager's salary. Analysis of the subject Company is based on the adjusted totals. A summary of the adjusted historical financial statements is contained in the following section.
 
-Chinook Business Advisory does not audit or review the financial statements of the subject company nor any of the adjustments made by the User and bears no responsibility for the use of this report.
+\textbf{Chinook Business Advisory does not audit or review the financial statements of the subject company nor any of the adjustments made by the User and bears no responsibility for the use of this report.}
 
 \clearpage
 
@@ -145,27 +154,25 @@ Chinook Business Advisory does not audit or review the financial statements of t
 
 \vspace{1cm}
 
+\begin{minipage}[t]{0.55\textwidth}
+\vspace{0pt}
 \noindent
 Based on the information provided, the report has determined the Most Probable Selling Price (MPSP) for Persaj Countertops Inc. to be:
 
-\begin{center}
+\vspace{0.5cm}
+
 {\Huge\bfseries\color{primarypurple} \$2,624,652}
-\end{center}
 
 \vspace{1cm}
 
 \subsection*{Valuation Multiples}
 
 This price was determined using a market-based approach which examined 16 comparable transactions. These transactions included businesses with revenues between \$2,816,110 and \$3,705,479. An asking price of \$2,624,652 represents the following valuation multiples:
-
-\vspace{0.5cm}
-
-\begin{minipage}[t]{0.55\textwidth}
-\vspace{0pt}
 \end{minipage}%
 \hfill
 \begin{minipage}[t]{0.4\textwidth}
 \vspace{0pt}
+\vspace{2.5cm}
 \begin{tabular}{|>{\raggedright}p{3cm}|r|}
 \hline
 \rowcolor{tableheader}
@@ -296,21 +303,31 @@ The algorithm selects businesses that are similar in terms of NAICS code and ann
 
 \subsection*{The Science}
 
+\begin{minipage}[t]{0.48\textwidth}
+\vspace{0pt}
 Based on information you provide in the financial tables, the report then assigns your business a median business value. That means that if the report finds 15 businesses that were similar it would assign your business the middle value.
+\end{minipage}%
+\hfill
+\begin{minipage}[t]{0.48\textwidth}
+\vspace{0pt}
+\includegraphics[width=\textwidth]{science.png}
+\end{minipage}
 
-\begin{center}
-\includegraphics[width=0.6\textwidth]{science.png}
-\end{center}
+\vspace{0.5cm}
 
 \subsection*{The Art}
 
+\begin{minipage}[t]{0.48\textwidth}
+\vspace{0pt}
 The next part of the process involves taking the answers to the questions we ask and trying to determine if your business is more or less attractive than average.
 
 This report uses your answers to more accurately position your business on the chart. If your answers suggest that your business is a little better than the average in the dataset, the report will assign a higher Most Probable Selling Price to your business. Conversely, if there are opportunities to improve your business that haven't yet been acted on, the report will assign a lower MPSP.
-
-\begin{center}
-\includegraphics[width=0.6\textwidth]{art.png}
-\end{center}
+\end{minipage}%
+\hfill
+\begin{minipage}[t]{0.48\textwidth}
+\vspace{0pt}
+\includegraphics[width=\textwidth]{art.png}
+\end{minipage}
 
 \clearpage
 \section*{Unadjusted Historical Income Statements}
@@ -431,6 +448,8 @@ In its simplest definition, adjusted EBITDA is a measure of a company's financia
 
 Adjusted EBITDA is how many people determine business value as it places the focus on the financial outcome of operating decisions. It does this by removing the impacts of non-operating decisions made by the existing management, such as interest expenses, tax rates, or significant intangible assets. This leaves a figure that better reflects the operating profitability of a business, one that can effectively be compared between companies by owners, buyers and investors. It is for that reason many employ adjusted EBITDA over other metrics when deciding which organization is more attractive.
 
+\clearpage
+
 \subsection*{What does EBITDA stand for?}
 
 \textbf{E - Earnings} - how much money a company makes.
@@ -480,7 +499,7 @@ Total Expenses & 25.19\% & 28.55\% & Good \\
 
 \vspace{0.3cm}
 
-On average, total employment costs in your industry are 33.06\%\% of revenue. In comparison, your total employment costs are 0.00\%\%.
+On average, total employment costs in your industry are 33.06\% of revenue. In comparison, your total employment costs are 0.00\%.
 
 \clearpage
 \section*{Scorecard}
@@ -493,12 +512,18 @@ Sometimes the numbers don't represent the true value of a business. Scorecard va
 \vspace{0.5cm}
 
 \begin{center}
-\begin{tikzpicture}
-\draw[fill=lightgray] (0,0) rectangle (12,0.5);
-\draw[fill=primarypurple] (5.355004716113685,0.25) circle (0.3);
-\node[anchor=north] at (0,-0.1) {\$2,022,853};
-\node[anchor=north] at (6,-0.1) {\textbf{\$2,624,652}};
-\node[anchor=north] at (12,-0.1) {\$3,371,421};
+\begin{tikzpicture}[scale=0.9]
+% Draw the gray bar
+\fill[lightgray] (0,0) rectangle (12,0.6);
+% Draw the scale lines
+\draw[thick] (0,0) -- (0,0.6);
+\draw[thick] (12,0) -- (12,0.6);
+% Draw the purple circle
+\fill[primarypurple] (5.355004716113685,0.3) circle (0.35);
+% Add labels below
+\node[anchor=north,font=\small] at (0,-0.2) {\$2,022,853};
+\node[anchor=north,font=\bfseries\large] at (6,-0.2) {\$2,624,652};
+\node[anchor=north,font=\small] at (12,-0.2) {\$3,371,421};
 \end{tikzpicture}
 \end{center}
 
@@ -535,11 +560,12 @@ Are your payables always paid in full and on-time? & Yes \\
 \vspace{0.5cm}
 
 \begin{center}
-\begin{tikzpicture}
-\draw[<->] (0,0) -- (8,0);
-\node[anchor=north] at (0,-0.1) {\$-164,040};
-\node[anchor=north] at (8,-0.1) {\$164,040};
-\draw (4,0) -- (4,0.3);
+\begin{tikzpicture}[scale=0.9]
+\draw[<->,thick] (0,0) -- (8,0);
+\node[anchor=north,font=\small] at (0,-0.2) {\$-164,040};
+\node[anchor=north,font=\small] at (8,-0.2) {\$164,040};
+\draw[thick] (4,0) -- (4,0.4);
+\node[anchor=south,font=\tiny] at (4,0.5) {0};
 \end{tikzpicture}
 \end{center}
 
@@ -576,11 +602,12 @@ On a normal day, what percentage of customers ask for you by name? & 0% \\
 \vspace{0.5cm}
 
 \begin{center}
-\begin{tikzpicture}
-\draw[<->] (0,0) -- (8,0);
-\node[anchor=north] at (0,-0.1) {\$-164,040};
-\node[anchor=north] at (8,-0.1) {\$164,040};
-\draw (4,0) -- (4,0.3);
+\begin{tikzpicture}[scale=0.9]
+\draw[<->,thick] (0,0) -- (8,0);
+\node[anchor=north,font=\small] at (0,-0.2) {\$-164,040};
+\node[anchor=north,font=\small] at (8,-0.2) {\$164,040};
+\draw[thick] (4,0) -- (4,0.4);
+\node[anchor=south,font=\tiny] at (4,0.5) {0};
 \end{tikzpicture}
 \end{center}
 
@@ -615,11 +642,12 @@ In your current space and with your current equipment, by how much could you inc
 \vspace{0.5cm}
 
 \begin{center}
-\begin{tikzpicture}
-\draw[<->] (0,0) -- (8,0);
-\node[anchor=north] at (0,-0.1) {\$-98,424};
-\node[anchor=north] at (8,-0.1) {\$98,424};
-\draw (4,0) -- (4,0.3);
+\begin{tikzpicture}[scale=0.9]
+\draw[<->,thick] (0,0) -- (8,0);
+\node[anchor=north,font=\small] at (0,-0.2) {\$-98,424};
+\node[anchor=north,font=\small] at (8,-0.2) {\$98,424};
+\draw[thick] (4,0) -- (4,0.4);
+\node[anchor=south,font=\tiny] at (4,0.5) {0};
 \end{tikzpicture}
 \end{center}
 
@@ -655,11 +683,12 @@ Which one of these best describes your revenue model? & Your revenue is dependen
 \vspace{0.5cm}
 
 \begin{center}
-\begin{tikzpicture}
-\draw[<->] (0,0) -- (8,0);
-\node[anchor=north] at (0,-0.1) {\$-65,616};
-\node[anchor=north] at (8,-0.1) {\$65,616};
-\draw (4,0) -- (4,0.3);
+\begin{tikzpicture}[scale=0.9]
+\draw[<->,thick] (0,0) -- (8,0);
+\node[anchor=north,font=\small] at (0,-0.2) {\$-65,616};
+\node[anchor=north,font=\small] at (8,-0.2) {\$65,616};
+\draw[thick] (4,0) -- (4,0.4);
+\node[anchor=south,font=\tiny] at (4,0.5) {0};
 \end{tikzpicture}
 \end{center}
 
@@ -704,11 +733,12 @@ Could you easily replace the most important outside supplier to your business? &
 \vspace{0.5cm}
 
 \begin{center}
-\begin{tikzpicture}
-\draw[<->] (0,0) -- (8,0);
-\node[anchor=north] at (0,-0.1) {\$-98,424};
-\node[anchor=north] at (8,-0.1) {\$98,424};
-\draw (4,0) -- (4,0.3);
+\begin{tikzpicture}[scale=0.9]
+\draw[<->,thick] (0,0) -- (8,0);
+\node[anchor=north,font=\small] at (0,-0.2) {\$-98,424};
+\node[anchor=north,font=\small] at (8,-0.2) {\$98,424};
+\draw[thick] (4,0) -- (4,0.4);
+\node[anchor=south,font=\tiny] at (4,0.5) {0};
 \end{tikzpicture}
 \end{center}
 
@@ -747,11 +777,12 @@ Do you have a written customer acquisition strategy? & No \\
 \vspace{0.5cm}
 
 \begin{center}
-\begin{tikzpicture}
-\draw[<->] (0,0) -- (8,0);
-\node[anchor=north] at (0,-0.1) {\$-65,616};
-\node[anchor=north] at (8,-0.1) {\$65,616};
-\draw (4,0) -- (4,0.3);
+\begin{tikzpicture}[scale=0.9]
+\draw[<->,thick] (0,0) -- (8,0);
+\node[anchor=north,font=\small] at (0,-0.2) {\$-65,616};
+\node[anchor=north,font=\small] at (8,-0.2) {\$65,616};
+\draw[thick] (4,0) -- (4,0.4);
+\node[anchor=south,font=\tiny] at (4,0.5) {0};
 \end{tikzpicture}
 \end{center}
 
