@@ -1,2 +1,23 @@
 # macOS system files
 .DS_Store
+
+# PDF
+.pdf
+
+# CSV
+.csv
+
+# AUX
+.aux
+
+# LOG
+.log
+
+# TOC
+.toc
+
+# scrap folder
+scrap/
+
+# Inspiration report:
+Valuation Report (12).pdf
