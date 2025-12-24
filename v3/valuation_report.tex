@@ -56,34 +56,39 @@
 \pagenumbering{gobble}
 
 \begin{center}
-\vspace*{2cm}
+\vspace*{1cm}
 
-% Black rectangle with white text
-\colorbox{black}{%
-  \parbox{0.95\textwidth}{%
-    \centering
+% Logo at top
+\includegraphics[width=0.5\textwidth]{Chinook_logo.png}
+
+\vspace{1.5cm}
+
+\end{center}
+
+% Full-width black rectangle with left-aligned text
+\noindent\colorbox{black}{%
+  \parbox{\textwidth}{%
     \vspace{0.8cm}
     {\Huge\bfseries\textcolor{white}{Most Probable Selling Price}\par}
     \vspace{0.2cm}
     {\Huge\bfseries\textcolor{white}{Report}\par}
     \vspace{0.8cm}
+    {\LARGE\bfseries\textcolor{white}{Persaj Countertops Inc.}\par}
+    \vspace{0.3cm}
+    {\Large\textcolor{white}{November 22, 2025}\par}
+    \vspace{0.8cm}
   }%
 }
 
+\begin{center}
+
 \vspace{2cm}
-
-{\LARGE\bfseries Persaj Countertops Inc.\par}
-\vspace{0.5cm}
-
-{\Large November 22, 2025\par}
 
 \vfill
 
-\includegraphics[width=0.35\textwidth]{Chinook_logo.png}
+{\large Chinook Business Advisory\par}
 
 \vspace{1cm}
-
-{\large Chinook Business Advisory\par}
 
 \end{center}
 
@@ -413,7 +418,7 @@ Discretionary Expense & \$- & \$- & \$- & \$- & \$- & \\
 Amortization & \$0 & \$98,792 & \$104,370 & \$103,448 & \$114,858 & \\
 \hline
 \rowcolor{white}
-Interest on Equipment under Capital Lease & \$0 & \$4,171 & \$11,606 & \$15,007 & \$14,951 & \\
+Interest on Equipment & \$0 & \$4,171 & \$11,606 & \$15,007 & \$14,951 & \\
 \hline
 \rowcolor{tableodd}
 Management Salary & \$230,000 & \$0 & \$0 & \$0 & \$0 & \\
@@ -425,7 +430,7 @@ Management Salary & \$230,000 & \$0 & \$0 & \$0 & \$0 & \\
 \textbf{SDE} & \$740,875 & \$678,672 & \$145,206 & \$360,197 & \$193,976 & \\
 \hline
 \rowcolor{white}
-Replace owner with manager & \$120,000 & \$120,000 & \$110,000 & \$100,000 & \$90,000 & \\
+Replace owner & \$120,000 & \$120,000 & \$110,000 & \$100,000 & \$90,000 & \\
 \hline
 \rowcolor{tableodd}
 \textbf{Adjusted EBITDA} & \$620,875 & \$558,672 & \$35,206 & \$260,197 & \$103,976 & \\
@@ -452,17 +457,14 @@ Adjusted EBITDA is how many people determine business value as it places the foc
 
 \subsection*{What does EBITDA stand for?}
 
-\textbf{E - Earnings} - how much money a company makes.
-
-\textbf{B - Before}
-
-\textbf{I - Interest} - the expenses to a business caused by interest rates, such as loans provided by a bank or similar third-party.
-
-\textbf{T - Taxes} - the expenses to a business caused by tax rates imposed by their city, state, and country.
-
-\textbf{D - Depreciation} - a non-cash expense referring to the gradual reduction in value of a company's assets.
-
-\textbf{A - Amortization} - a non-cash expense referring to the cost of intangible (non-balance sheet) assets over time.
+\begin{description}[style=nextline,leftmargin=0cm,itemsep=8pt]
+\item[\textbf{E --- Earnings}] How much money a company makes.
+\item[\textbf{B --- Before}] 
+\item[\textbf{I --- Interest}] The expenses to a business caused by interest rates, such as loans provided by a bank or similar third-party.
+\item[\textbf{T --- Taxes}] The expenses to a business caused by tax rates imposed by their city, state, and country.
+\item[\textbf{D --- Depreciation}] A non-cash expense referring to the gradual reduction in value of a company's assets.
+\item[\textbf{A --- Amortization}] A non-cash expense referring to the cost of intangible (non-balance sheet) assets over time.
+\end{description}
 
 \subsection*{SDE}
 
@@ -537,7 +539,8 @@ The following tables break down the qualitative analysis of Persaj Countertops I
 \subsection*{Finance and General Operations +/- 6.25\% of valuation}
 
 \begin{center}
-\begin{tabular}{|>{\raggedright}p{10cm}|p{4cm}|}
+\small
+\begin{tabular}{|>{\raggedright\arraybackslash}p{9.5cm}|>{\raggedright\arraybackslash}p{4cm}|}
 \hline
 \rowcolor{tableheader}
 \textcolor{white}{\textbf{Question}} & \textcolor{white}{\textbf{Answer}} \\
@@ -561,11 +564,19 @@ Are your payables always paid in full and on-time? & Yes \\
 
 \begin{center}
 \begin{tikzpicture}[scale=0.9]
-\draw[<->,thick] (0,0) -- (8,0);
+% Draw the gray bar
+\fill[lightgray] (0,0) rectangle (8,0.6);
+% Draw scale endpoints
+\draw[thick] (0,0) -- (0,0.6);
+\draw[thick] (8,0) -- (8,0.6);
+% Draw center mark
+\draw[thick] (4,0) -- (4,0.6);
+% Draw the dot at center
+\fill[primarypurple] (4,0.3) circle (0.25);
+% Labels
 \node[anchor=north,font=\small] at (0,-0.2) {\$-164,040};
+\node[anchor=north,font=\small] at (4,-0.2) {0};
 \node[anchor=north,font=\small] at (8,-0.2) {\$164,040};
-\draw[thick] (4,0) -- (4,0.4);
-\node[anchor=south,font=\tiny] at (4,0.5) {0};
 \end{tikzpicture}
 \end{center}
 
@@ -582,7 +593,8 @@ It is very difficult for a potential buyer to assess, and ultimately purchase, a
 \subsection*{Owner Dependency +/- 6.25\% of valuation}
 
 \begin{center}
-\begin{tabular}{|>{\raggedright}p{10cm}|p{4cm}|}
+\small
+\begin{tabular}{|>{\raggedright\arraybackslash}p{9.5cm}|>{\raggedright\arraybackslash}p{4cm}|}
 \hline
 \rowcolor{tableheader}
 \textcolor{white}{\textbf{Question}} & \textcolor{white}{\textbf{Answer}} \\
@@ -594,7 +606,7 @@ Would your company thrive if you left for 2 months? & No \\
 Have you taken a vacation longer than 1 month in the past 2 years? & No \\
 \hline
 \rowcolor{tableodd}
-On a normal day, what percentage of customers ask for you by name? & 0% \\
+On a normal day, what percentage of customers ask for you by name? & 0\% \\
 \hline
 \end{tabular}
 \end{center}
@@ -603,11 +615,19 @@ On a normal day, what percentage of customers ask for you by name? & 0% \\
 
 \begin{center}
 \begin{tikzpicture}[scale=0.9]
-\draw[<->,thick] (0,0) -- (8,0);
+% Draw the gray bar
+\fill[lightgray] (0,0) rectangle (8,0.6);
+% Draw scale endpoints
+\draw[thick] (0,0) -- (0,0.6);
+\draw[thick] (8,0) -- (8,0.6);
+% Draw center mark
+\draw[thick] (4,0) -- (4,0.6);
+% Draw the dot at center
+\fill[primarypurple] (4,0.3) circle (0.25);
+% Labels
 \node[anchor=north,font=\small] at (0,-0.2) {\$-164,040};
+\node[anchor=north,font=\small] at (4,-0.2) {0};
 \node[anchor=north,font=\small] at (8,-0.2) {\$164,040};
-\draw[thick] (4,0) -- (4,0.4);
-\node[anchor=south,font=\tiny] at (4,0.5) {0};
 \end{tikzpicture}
 \end{center}
 
@@ -625,7 +645,8 @@ One of the single biggest concerns voiced by business acquirers is the fear that
 \subsection*{Growth Potential +/- 3.75\% of valuation}
 
 \begin{center}
-\begin{tabular}{|>{\raggedright}p{10cm}|p{4cm}|}
+\small
+\begin{tabular}{|>{\raggedright\arraybackslash}p{9.5cm}|>{\raggedright\arraybackslash}p{4cm}|}
 \hline
 \rowcolor{tableheader}
 \textcolor{white}{\textbf{Question}} & \textcolor{white}{\textbf{Answer}} \\
@@ -634,7 +655,7 @@ One of the single biggest concerns voiced by business acquirers is the fear that
 Have you identified growth opportunities in your business? & Yes \\
 \hline
 \rowcolor{white}
-In your current space and with your current equipment, by how much could you increase revenues? & 25% \\
+In your current space and with your current equipment, by how much could you increase revenues? & 25\% \\
 \hline
 \end{tabular}
 \end{center}
@@ -643,11 +664,19 @@ In your current space and with your current equipment, by how much could you inc
 
 \begin{center}
 \begin{tikzpicture}[scale=0.9]
-\draw[<->,thick] (0,0) -- (8,0);
+% Draw the gray bar
+\fill[lightgray] (0,0) rectangle (8,0.6);
+% Draw scale endpoints
+\draw[thick] (0,0) -- (0,0.6);
+\draw[thick] (8,0) -- (8,0.6);
+% Draw center mark
+\draw[thick] (4,0) -- (4,0.6);
+% Draw the dot at center
+\fill[primarypurple] (4,0.3) circle (0.25);
+% Labels
 \node[anchor=north,font=\small] at (0,-0.2) {\$-98,424};
+\node[anchor=north,font=\small] at (4,-0.2) {0};
 \node[anchor=north,font=\small] at (8,-0.2) {\$98,424};
-\draw[thick] (4,0) -- (4,0.4);
-\node[anchor=south,font=\tiny] at (4,0.5) {0};
 \end{tikzpicture}
 \end{center}
 
@@ -669,7 +698,8 @@ Document growth opportunities - even if you don't act on them, a buyer will appr
 \subsection*{Recurring Revenues +/- 2.5\% of valuation}
 
 \begin{center}
-\begin{tabular}{|>{\raggedright}p{10cm}|p{4cm}|}
+\small
+\begin{tabular}{|>{\raggedright\arraybackslash}p{9.5cm}|>{\raggedright\arraybackslash}p{4cm}|}
 \hline
 \rowcolor{tableheader}
 \textcolor{white}{\textbf{Question}} & \textcolor{white}{\textbf{Answer}} \\
@@ -684,11 +714,19 @@ Which one of these best describes your revenue model? & Your revenue is dependen
 
 \begin{center}
 \begin{tikzpicture}[scale=0.9]
-\draw[<->,thick] (0,0) -- (8,0);
+% Draw the gray bar
+\fill[lightgray] (0,0) rectangle (8,0.6);
+% Draw scale endpoints
+\draw[thick] (0,0) -- (0,0.6);
+\draw[thick] (8,0) -- (8,0.6);
+% Draw center mark
+\draw[thick] (4,0) -- (4,0.6);
+% Draw the dot at center
+\fill[primarypurple] (4,0.3) circle (0.25);
+% Labels
 \node[anchor=north,font=\small] at (0,-0.2) {\$-65,616};
+\node[anchor=north,font=\small] at (4,-0.2) {0};
 \node[anchor=north,font=\small] at (8,-0.2) {\$65,616};
-\draw[thick] (4,0) -- (4,0.4);
-\node[anchor=south,font=\tiny] at (4,0.5) {0};
 \end{tikzpicture}
 \end{center}
 
@@ -707,22 +745,23 @@ Not all companies can transition their customers to a recurring revenue model, b
 \subsection*{Organizational Stability +/- 3.75\% of valuation}
 
 \begin{center}
-\begin{tabular}{|>{\raggedright}p{10cm}|p{4cm}|}
+\small
+\begin{tabular}{|>{\raggedright\arraybackslash}p{9.5cm}|>{\raggedright\arraybackslash}p{4cm}|}
 \hline
 \rowcolor{tableheader}
 \textcolor{white}{\textbf{Question}} & \textcolor{white}{\textbf{Answer}} \\
 \hline
 \rowcolor{tableodd}
-How much revenue does your largest customer represent? & Less than 5% \\
+How much revenue does your largest customer represent? & Less than 5\% \\
 \hline
 \rowcolor{white}
-How much revenue does your 5 largest customers represent? & 10%-24% \\
+How much revenue does your 5 largest customers represent? & 10\%-24\% \\
 \hline
 \rowcolor{tableodd}
 If this person isn't you, could you easily replace the person most responsible for sales and marketing in your business? & It is me \\
 \hline
 \rowcolor{white}
-If this person isn't you, could you easily replace the person most responsible for product/service design \& delivery in your business? & It is me \\
+If this person isn't you, could you easily replace the person most responsible for product/service design and delivery in your business? & It is me \\
 \hline
 \rowcolor{tableodd}
 Could you easily replace the most important outside supplier to your business? & Yes \\
@@ -734,11 +773,19 @@ Could you easily replace the most important outside supplier to your business? &
 
 \begin{center}
 \begin{tikzpicture}[scale=0.9]
-\draw[<->,thick] (0,0) -- (8,0);
+% Draw the gray bar
+\fill[lightgray] (0,0) rectangle (8,0.6);
+% Draw scale endpoints
+\draw[thick] (0,0) -- (0,0.6);
+\draw[thick] (8,0) -- (8,0.6);
+% Draw center mark
+\draw[thick] (4,0) -- (4,0.6);
+% Draw the dot at center
+\fill[primarypurple] (4,0.3) circle (0.25);
+% Labels
 \node[anchor=north,font=\small] at (0,-0.2) {\$-98,424};
+\node[anchor=north,font=\small] at (4,-0.2) {0};
 \node[anchor=north,font=\small] at (8,-0.2) {\$98,424};
-\draw[thick] (4,0) -- (4,0.4);
-\node[anchor=south,font=\tiny] at (4,0.5) {0};
 \end{tikzpicture}
 \end{center}
 
@@ -754,7 +801,8 @@ Business buyers are often concerned about how stable or resilient an organizatio
 \subsection*{Sales and Marketing +/- 2.5\% of valuation}
 
 \begin{center}
-\begin{tabular}{|>{\raggedright}p{10cm}|p{4cm}|}
+\small
+\begin{tabular}{|>{\raggedright\arraybackslash}p{9.5cm}|>{\raggedright\arraybackslash}p{4cm}|}
 \hline
 \rowcolor{tableheader}
 \textcolor{white}{\textbf{Question}} & \textcolor{white}{\textbf{Answer}} \\
@@ -763,7 +811,7 @@ Business buyers are often concerned about how stable or resilient an organizatio
 Do you collect customer feedback with a documented process? & No \\
 \hline
 \rowcolor{white}
-How much do you spend on marketing as a percentage of gross revenue? & 1-5% \\
+How much do you spend on marketing as a percentage of gross revenue? & 1-5\% \\
 \hline
 \rowcolor{tableodd}
 Do you show up on the first page on a local Google search in your industry? & Yes \\
@@ -778,11 +826,19 @@ Do you have a written customer acquisition strategy? & No \\
 
 \begin{center}
 \begin{tikzpicture}[scale=0.9]
-\draw[<->,thick] (0,0) -- (8,0);
+% Draw the gray bar
+\fill[lightgray] (0,0) rectangle (8,0.6);
+% Draw scale endpoints
+\draw[thick] (0,0) -- (0,0.6);
+\draw[thick] (8,0) -- (8,0.6);
+% Draw center mark
+\draw[thick] (4,0) -- (4,0.6);
+% Draw the dot at center
+\fill[primarypurple] (4,0.3) circle (0.25);
+% Labels
 \node[anchor=north,font=\small] at (0,-0.2) {\$-65,616};
+\node[anchor=north,font=\small] at (4,-0.2) {0};
 \node[anchor=north,font=\small] at (8,-0.2) {\$65,616};
-\draw[thick] (4,0) -- (4,0.4);
-\node[anchor=south,font=\tiny] at (4,0.5) {0};
 \end{tikzpicture}
 \end{center}
 
@@ -810,12 +866,12 @@ When businesses have an existing marketing plan and established brand, obtaining
 \begin{longtable}{|l|r|r|r|r|r|r|r|}
 \hline
 \rowcolor{tableheader}
-\textcolor{white}{\textbf{NAICS Code}} & \textcolor{white}{\textbf{Revenue}} & \textcolor{white}{\textbf{SDE}} & \textcolor{white}{\textbf{Adj. EBITDA}} & \textcolor{white}{\textbf{Price}} & \textcolor{white}{\textbf{Revenue Multiple}} & \textcolor{white}{\textbf{SDE Multiple}} & \textcolor{white}{\textbf{Adj. EBITDA Multiple}} \\
+\textcolor{white}{\textbf{NAICS}} & \textcolor{white}{\textbf{Revenue}} & \textcolor{white}{\textbf{SDE}} & \textcolor{white}{\textbf{Adj. EBITDA}} & \textcolor{white}{\textbf{Price}} & \textcolor{white}{\textbf{Rev Mult}} & \textcolor{white}{\textbf{SDE Mult}} & \textcolor{white}{\textbf{EBITDA Mult}} \\
 \hline
 \endfirsthead
 \hline
 \rowcolor{tableheader}
-\textcolor{white}{\textbf{NAICS Code}} & \textcolor{white}{\textbf{Revenue}} & \textcolor{white}{\textbf{SDE}} & \textcolor{white}{\textbf{Adj. EBITDA}} & \textcolor{white}{\textbf{Price}} & \textcolor{white}{\textbf{Revenue Multiple}} & \textcolor{white}{\textbf{SDE Multiple}} & \textcolor{white}{\textbf{Adj. EBITDA Multiple}} \\
+\textcolor{white}{\textbf{NAICS}} & \textcolor{white}{\textbf{Revenue}} & \textcolor{white}{\textbf{SDE}} & \textcolor{white}{\textbf{Adj. EBITDA}} & \textcolor{white}{\textbf{Price}} & \textcolor{white}{\textbf{Rev Mult}} & \textcolor{white}{\textbf{SDE Mult}} & \textcolor{white}{\textbf{EBITDA Mult}} \\
 \hline
 \endhead
 \rowcolor{tableodd}
