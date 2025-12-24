@@ -13,14 +13,15 @@
 \usepackage{titlesec}
 \usepackage{enumitem}
 \usepackage{amsmath}
+\usepackage{tikz}
 \usepackage[hidelinks]{hyperref}
 
 % Define colors
-\definecolor{primaryblue}{RGB}{41,128,185}
+\definecolor{primarypurple}{RGB}{102,45,145}
 \definecolor{lightgray}{RGB}{240,240,240}
 \definecolor{darkgray}{RGB}{100,100,100}
-\definecolor{tableheader}{RGB}{52,152,219}
-\definecolor{tableodd}{RGB}{235,245,251}
+\definecolor{tableheader}{RGB}{102,45,145}
+\definecolor{tableodd}{RGB}{245,240,250}
 
 % Header and footer
 \pagestyle{fancy}
@@ -34,13 +35,14 @@
 
 % Title formatting
 \titleformat{\section}
-  {\normalfont\Large\bfseries\color{primaryblue}}
-  {\thesection}{1em}{}
+  {\normalfont\Large\bfseries\color{primarypurple}}
+  {}{0em}{}[\titlerule]
 \titleformat{\subsection}
-  {\normalfont\large\bfseries\color{primaryblue}}
+  {\normalfont\large\bfseries\color{primarypurple}}
   {\thesubsection}{1em}{}
 
 % TOC formatting
+\renewcommand{\contentsname}{Table of Contents}
 \renewcommand{\cftsecleader}{\cftdotfill{\cftdotsep}}
 \setlength{\cftbeforesecskip}{8pt}
 
@@ -54,7 +56,16 @@
 \centering
 \vspace*{1cm}
 
-{\Huge\bfseries\color{primaryblue} Most Probable Selling Price Report\par}
+% Black rectangle with white text
+\colorbox{black}{%
+  \parbox{0.9\textwidth}{%
+    \centering
+    \vspace{0.5cm}
+    {\Huge\bfseries\textcolor{white}{Most Probable Selling Price Report}\par}
+    \vspace{0.5cm}
+  }%
+}
+
 \vspace{1.5cm}
 
 {\LARGE\bfseries Persaj Countertops Inc.\par}
@@ -138,7 +149,7 @@ Chinook Business Advisory does not audit or review the financial statements of t
 Based on the information provided, the report has determined the Most Probable Selling Price (MPSP) for Persaj Countertops Inc. to be:
 
 \begin{center}
-{\Huge\bfseries\color{primaryblue} \$2,624,652}
+{\Huge\bfseries\color{primarypurple} \$2,624,652}
 \end{center}
 
 \vspace{1cm}
@@ -149,18 +160,28 @@ This price was determined using a market-based approach which examined 16 compar
 
 \vspace{0.5cm}
 
-\begin{center}
-\begin{tabular}{>{\raggedright}p{4cm}r}
+\begin{minipage}[t]{0.55\textwidth}
+\vspace{0pt}
+\end{minipage}%
+\hfill
+\begin{minipage}[t]{0.4\textwidth}
+\vspace{0pt}
+\begin{tabular}{|>{\raggedright}p{3cm}|r|}
+\hline
 \rowcolor{tableheader}
 \textcolor{white}{\textbf{Valuation Metric}} & \textcolor{white}{\textbf{Multiple}} \\
+\hline
 \rowcolor{tableodd}
 Revenue & 0.84 \\
+\hline
 \rowcolor{white}
 SDE & 3.7 \\
+\hline
 \rowcolor{tableodd}
 Adj. EBITDA & 4.45 \\
+\hline
 \end{tabular}
-\end{center}
+\end{minipage}
 
 \vspace{0.5cm}
 
@@ -180,27 +201,38 @@ See Appendix A for comparable transactions.
 
 \begin{center}
 \small
-\begin{tabular}{lrrrrr}
+\begin{tabular}{|l|r|r|r|r|r|}
+\hline
 \rowcolor{tableheader}
 \textcolor{white}{} & \textcolor{white}{\textbf{2025 proj.}} & \textcolor{white}{\textbf{2024}} & \textcolor{white}{\textbf{2023}} & \textcolor{white}{\textbf{2022}} & \textcolor{white}{\textbf{2021}} \\
+\hline
 \rowcolor{tableodd}
 \textbf{Total Revenue} & \$2,963,256 & \$3,312,931 & \$2,615,371 & \$2,280,483 & \$1,730,366 \\
+\hline
 \rowcolor{white}
 \textbf{Total Cost of Goods} & \$1,346,344 & \$2,282,139 & \$2,117,285 & \$1,593,521 & \$1,260,059 \\
+\hline
 \rowcolor{tableodd}
 \textbf{Gross Profit} & \$1,616,912 & \$1,030,792 & \$498,086 & \$686,962 & \$470,307 \\
+\hline
 \rowcolor{white}
 \textbf{Total Expenses} & \$1,106,037 & \$475,083 & \$468,856 & \$445,220 & \$406,140 \\
+\hline
 \rowcolor{tableodd}
 \textbf{Net Income} & \$510,875 & \$575,709 & \$29,230 & \$241,742 & \$64,167 \\
+\hline
 \rowcolor{white}
 \textbf{Total Normalizations} & \$230,000 & \$102,963 & \$115,976 & \$118,455 & \$129,809 \\
+\hline
 \rowcolor{tableodd}
 \textbf{SDE} & \$740,875 & \$678,672 & \$145,206 & \$360,197 & \$193,976 \\
+\hline
 \rowcolor{white}
 \textbf{Adj. EBITDA} & \$620,875 & \$558,672 & \$35,206 & \$260,197 & \$103,976 \\
+\hline
 \rowcolor{tableodd}
 \textbf{Year Weighting} & 50\% & 50\% & 0\% & 0\% & 0\% \\
+\hline
 \end{tabular}
 \end{center}
 
@@ -266,11 +298,19 @@ The algorithm selects businesses that are similar in terms of NAICS code and ann
 
 Based on information you provide in the financial tables, the report then assigns your business a median business value. That means that if the report finds 15 businesses that were similar it would assign your business the middle value.
 
+\begin{center}
+\includegraphics[width=0.6\textwidth]{science.png}
+\end{center}
+
 \subsection*{The Art}
 
 The next part of the process involves taking the answers to the questions we ask and trying to determine if your business is more or less attractive than average.
 
 This report uses your answers to more accurately position your business on the chart. If your answers suggest that your business is a little better than the average in the dataset, the report will assign a higher Most Probable Selling Price to your business. Conversely, if there are opportunities to improve your business that haven't yet been acted on, the report will assign a lower MPSP.
+
+\begin{center}
+\includegraphics[width=0.6\textwidth]{art.png}
+\end{center}
 
 \clearpage
 \section*{Unadjusted Historical Income Statements}
@@ -282,35 +322,52 @@ This report uses your answers to more accurately position your business on the c
 
 \begin{center}
 \small
-\begin{tabular}{lrrrrr}
+\begin{tabular}{|l|r|r|r|r|r|}
+\hline
 \rowcolor{tableheader}
 \textcolor{white}{} & \textcolor{white}{\textbf{2025 proj.}} & \textcolor{white}{\textbf{2024}} & \textcolor{white}{\textbf{2023}} & \textcolor{white}{\textbf{2022}} & \textcolor{white}{\textbf{2021}} \\
-\multicolumn{6}{l}{\textbf{Revenue}} \\
+\hline
+\multicolumn{6}{|l|}{\textbf{Revenue}} \\
+\hline
 \rowcolor{tableodd}
 Revenue & \$2,963,256 & \$3,312,931 & \$2,615,371 & \$2,280,483 & \$1,730,366 \\
+\hline
 \rowcolor{white}
 \textbf{Total Revenue} & \$2,963,256 & \$3,312,931 & \$2,615,371 & \$2,280,483 & \$1,730,366 \\
-\multicolumn{6}{l}{\textbf{Cost of Goods}} \\
+\hline
+\multicolumn{6}{|l|}{\textbf{Cost of Goods}} \\
+\hline
 \rowcolor{tableodd}
 Cost of Sales & \$1,346,344 & \$2,282,139 & \$2,117,285 & \$1,593,521 & \$1,260,059 \\
+\hline
 \rowcolor{white}
 \textbf{Total Cost of Goods} & \$1,346,344 & \$2,282,139 & \$2,117,285 & \$1,593,521 & \$1,260,059 \\
+\hline
 \rowcolor{tableodd}
 \textbf{Gross Profit} & \$1,616,912 & \$1,030,792 & \$498,086 & \$686,962 & \$470,307 \\
+\hline
 \rowcolor{white}
 \textbf{Gross Profit \%} & 54.57\% & 31.11\% & 19.04\% & 30.12\% & 27.18\% \\
-\multicolumn{6}{l}{\textbf{Expenses}} \\
+\hline
+\multicolumn{6}{|l|}{\textbf{Expenses}} \\
+\hline
 \rowcolor{tableodd}
 General Expense & \$1,106,037 & \$475,083 & \$468,856 & \$445,220 & \$406,140 \\
+\hline
 \rowcolor{white}
 \textbf{Total Expenses} & \$1,106,037 & \$475,083 & \$468,856 & \$445,220 & \$406,140 \\
-\multicolumn{6}{l}{\textbf{Other Income}} \\
+\hline
+\multicolumn{6}{|l|}{\textbf{Other Income}} \\
+\hline
 \rowcolor{tableodd}
 - & \$- & \$- & \$20,000 & \$- & \$- \\
+\hline
 \rowcolor{white}
 \textbf{Net Income} & \$510,875 & \$575,709 & \$29,230 & \$241,742 & \$64,167 \\
+\hline
 \rowcolor{tableodd}
 \textbf{Net Income \%} & 17.24\% & 17.38\% & 1.12\% & 10.60\% & 3.71\% \\
+\hline
 \end{tabular}
 \end{center}
 
@@ -324,29 +381,41 @@ General Expense & \$1,106,037 & \$475,083 & \$468,856 & \$445,220 & \$406,140 \\
 
 \begin{center}
 \small
-\begin{tabular}{lrrrrrl}
+\begin{tabular}{|l|r|r|r|r|r|l|}
+\hline
 \rowcolor{tableheader}
 \textcolor{white}{} & \textcolor{white}{\textbf{2025 proj.}} & \textcolor{white}{\textbf{2024}} & \textcolor{white}{\textbf{2023}} & \textcolor{white}{\textbf{2022}} & \textcolor{white}{\textbf{2021}} & \textcolor{white}{\textbf{Notes}} \\
+\hline
 \rowcolor{tableodd}
 Net Income & \$510,875 & \$575,709 & \$29,230 & \$241,742 & \$64,167 & \\
+\hline
 \rowcolor{white}
 Discretionary Expense & \$- & \$- & \$- & \$- & \$- & \\
+\hline
 \rowcolor{tableodd}
 Amortization & \$0 & \$98,792 & \$104,370 & \$103,448 & \$114,858 & \\
+\hline
 \rowcolor{white}
 Interest on Equipment under Capital Lease & \$0 & \$4,171 & \$11,606 & \$15,007 & \$14,951 & \\
+\hline
 \rowcolor{tableodd}
 Management Salary & \$230,000 & \$0 & \$0 & \$0 & \$0 & \\
+\hline
 \rowcolor{white}
 \textbf{Total Adjustments} & \$230,000 & \$102,963 & \$115,976 & \$118,455 & \$129,809 & \\
+\hline
 \rowcolor{tableodd}
 \textbf{SDE} & \$740,875 & \$678,672 & \$145,206 & \$360,197 & \$193,976 & \\
+\hline
 \rowcolor{white}
 Replace owner with manager & \$120,000 & \$120,000 & \$110,000 & \$100,000 & \$90,000 & \\
+\hline
 \rowcolor{tableodd}
 \textbf{Adjusted EBITDA} & \$620,875 & \$558,672 & \$35,206 & \$260,197 & \$103,976 & \\
+\hline
 \rowcolor{white}
 \textbf{Year Weighting} & 50\% & 50\% & 0\% & 0\% & 0\% & \\
+\hline
 \end{tabular}
 \end{center}
 
@@ -391,13 +460,17 @@ The table below compares your financial performance to 1,768 other businesses in
 \vspace{0.5cm}
 
 \begin{center}
-\begin{tabular}{lrrr}
+\begin{tabular}{|l|r|r|r|}
+\hline
 \rowcolor{tableheader}
 \textcolor{white}{} & \textcolor{white}{\textbf{Your Average}} & \textcolor{white}{\textbf{Industry Average}} & \textcolor{white}{\textbf{Analysis}} \\
+\hline
 \rowcolor{tableodd}
 Cost of Goods & 57.81\% & 65.68\% & Good \\
+\hline
 \rowcolor{white}
 Total Expenses & 25.19\% & 28.55\% & Good \\
+\hline
 \end{tabular}
 \end{center}
 
@@ -422,7 +495,7 @@ Sometimes the numbers don't represent the true value of a business. Scorecard va
 \begin{center}
 \begin{tikzpicture}
 \draw[fill=lightgray] (0,0) rectangle (12,0.5);
-\draw[fill=primaryblue] (2.6775023580568424,0) circle (0.3);
+\draw[fill=primarypurple] (5.355004716113685,0.25) circle (0.3);
 \node[anchor=north] at (0,-0.1) {\$2,022,853};
 \node[anchor=north] at (6,-0.1) {\textbf{\$2,624,652}};
 \node[anchor=north] at (12,-0.1) {\$3,371,421};
@@ -439,17 +512,23 @@ The following tables break down the qualitative analysis of Persaj Countertops I
 \subsection*{Finance and General Operations +/- 6.25\% of valuation}
 
 \begin{center}
-\begin{tabular}{>{\raggedright}p{10cm}p{4cm}}
+\begin{tabular}{|>{\raggedright}p{10cm}|p{4cm}|}
+\hline
 \rowcolor{tableheader}
 \textcolor{white}{\textbf{Question}} & \textcolor{white}{\textbf{Answer}} \\
+\hline
 \rowcolor{tableodd}
 Businesses typically have higher valuations when processes are documented. Does your firm have documented systemized business processes? & We have some things written down \\
+\hline
 \rowcolor{white}
 Do you hire an accountant to prepare your year-end Financial Statements and/or tax returns? & Yes \\
+\hline
 \rowcolor{tableodd}
 Do you prepare an annual operating budget? & No \\
+\hline
 \rowcolor{white}
 Are your payables always paid in full and on-time? & Yes \\
+\hline
 \end{tabular}
 \end{center}
 
@@ -477,15 +556,20 @@ It is very difficult for a potential buyer to assess, and ultimately purchase, a
 \subsection*{Owner Dependency +/- 6.25\% of valuation}
 
 \begin{center}
-\begin{tabular}{>{\raggedright}p{10cm}p{4cm}}
+\begin{tabular}{|>{\raggedright}p{10cm}|p{4cm}|}
+\hline
 \rowcolor{tableheader}
 \textcolor{white}{\textbf{Question}} & \textcolor{white}{\textbf{Answer}} \\
+\hline
 \rowcolor{tableodd}
 Would your company thrive if you left for 2 months? & No \\
+\hline
 \rowcolor{white}
 Have you taken a vacation longer than 1 month in the past 2 years? & No \\
+\hline
 \rowcolor{tableodd}
 On a normal day, what percentage of customers ask for you by name? & 0% \\
+\hline
 \end{tabular}
 \end{center}
 
@@ -514,13 +598,17 @@ One of the single biggest concerns voiced by business acquirers is the fear that
 \subsection*{Growth Potential +/- 3.75\% of valuation}
 
 \begin{center}
-\begin{tabular}{>{\raggedright}p{10cm}p{4cm}}
+\begin{tabular}{|>{\raggedright}p{10cm}|p{4cm}|}
+\hline
 \rowcolor{tableheader}
 \textcolor{white}{\textbf{Question}} & \textcolor{white}{\textbf{Answer}} \\
+\hline
 \rowcolor{tableodd}
 Have you identified growth opportunities in your business? & Yes \\
+\hline
 \rowcolor{white}
 In your current space and with your current equipment, by how much could you increase revenues? & 25% \\
+\hline
 \end{tabular}
 \end{center}
 
@@ -553,11 +641,14 @@ Document growth opportunities - even if you don't act on them, a buyer will appr
 \subsection*{Recurring Revenues +/- 2.5\% of valuation}
 
 \begin{center}
-\begin{tabular}{>{\raggedright}p{10cm}p{4cm}}
+\begin{tabular}{|>{\raggedright}p{10cm}|p{4cm}|}
+\hline
 \rowcolor{tableheader}
 \textcolor{white}{\textbf{Question}} & \textcolor{white}{\textbf{Answer}} \\
+\hline
 \rowcolor{tableodd}
 Which one of these best describes your revenue model? & Your revenue is dependent on customers walking in/calling in to order/ordering online. (eg. retail store, restaurant, construction services) \\
+\hline
 \end{tabular}
 \end{center}
 
@@ -587,19 +678,26 @@ Not all companies can transition their customers to a recurring revenue model, b
 \subsection*{Organizational Stability +/- 3.75\% of valuation}
 
 \begin{center}
-\begin{tabular}{>{\raggedright}p{10cm}p{4cm}}
+\begin{tabular}{|>{\raggedright}p{10cm}|p{4cm}|}
+\hline
 \rowcolor{tableheader}
 \textcolor{white}{\textbf{Question}} & \textcolor{white}{\textbf{Answer}} \\
+\hline
 \rowcolor{tableodd}
 How much revenue does your largest customer represent? & Less than 5% \\
+\hline
 \rowcolor{white}
 How much revenue does your 5 largest customers represent? & 10%-24% \\
+\hline
 \rowcolor{tableodd}
 If this person isn't you, could you easily replace the person most responsible for sales and marketing in your business? & It is me \\
+\hline
 \rowcolor{white}
 If this person isn't you, could you easily replace the person most responsible for product/service design \& delivery in your business? & It is me \\
+\hline
 \rowcolor{tableodd}
 Could you easily replace the most important outside supplier to your business? & Yes \\
+\hline
 \end{tabular}
 \end{center}
 
@@ -626,17 +724,23 @@ Business buyers are often concerned about how stable or resilient an organizatio
 \subsection*{Sales and Marketing +/- 2.5\% of valuation}
 
 \begin{center}
-\begin{tabular}{>{\raggedright}p{10cm}p{4cm}}
+\begin{tabular}{|>{\raggedright}p{10cm}|p{4cm}|}
+\hline
 \rowcolor{tableheader}
 \textcolor{white}{\textbf{Question}} & \textcolor{white}{\textbf{Answer}} \\
+\hline
 \rowcolor{tableodd}
 Do you collect customer feedback with a documented process? & No \\
+\hline
 \rowcolor{white}
 How much do you spend on marketing as a percentage of gross revenue? & 1-5% \\
+\hline
 \rowcolor{tableodd}
 Do you show up on the first page on a local Google search in your industry? & Yes \\
+\hline
 \rowcolor{white}
 Do you have a written customer acquisition strategy? & No \\
+\hline
 \end{tabular}
 \end{center}
 
@@ -672,45 +776,65 @@ When businesses have an existing marketing plan and established brand, obtaining
 
 \begin{center}
 \tiny
-\begin{longtable}{lrrrrrrr}
+\begin{longtable}{|l|r|r|r|r|r|r|r|}
+\hline
 \rowcolor{tableheader}
 \textcolor{white}{\textbf{NAICS Code}} & \textcolor{white}{\textbf{Revenue}} & \textcolor{white}{\textbf{SDE}} & \textcolor{white}{\textbf{Adj. EBITDA}} & \textcolor{white}{\textbf{Price}} & \textcolor{white}{\textbf{Revenue Multiple}} & \textcolor{white}{\textbf{SDE Multiple}} & \textcolor{white}{\textbf{Adj. EBITDA Multiple}} \\
+\hline
 \endfirsthead
+\hline
 \rowcolor{tableheader}
 \textcolor{white}{\textbf{NAICS Code}} & \textcolor{white}{\textbf{Revenue}} & \textcolor{white}{\textbf{SDE}} & \textcolor{white}{\textbf{Adj. EBITDA}} & \textcolor{white}{\textbf{Price}} & \textcolor{white}{\textbf{Revenue Multiple}} & \textcolor{white}{\textbf{SDE Multiple}} & \textcolor{white}{\textbf{Adj. EBITDA Multiple}} \\
+\hline
 \endhead
 \rowcolor{tableodd}
 336411 & \$3,702,307 & \$952,988 & \$812,988 & \$4,250,000 & 1.15 & 4.46 & 5.23 \\
+\hline
 \rowcolor{white}
 336211 & \$3,648,000 & \$853,000 & \$753,000 & \$2,900,000 & 0.79 & 3.4 & 3.85 \\
+\hline
 \rowcolor{tableodd}
 333318 & \$3,136,708 & \$784,618 & \$692,740 & \$2,950,000 & 0.94 & 3.76 & 4.26 \\
+\hline
 \rowcolor{white}
 332710 & \$3,705,479 & \$758,541 & \$670,992 & \$2,712,283 & 0.73 & 3.58 & 4.04 \\
+\hline
 \rowcolor{tableodd}
 332721 & \$3,276,000 & \$877,000 & \$604,000 & \$4,864,000 & 1.48 & 5.55 & 8.05 \\
+\hline
 \rowcolor{white}
 336310 & \$3,673,000 & \$694,878 & \$603,000 & \$2,139,000 & 0.58 & 3.08 & 3.55 \\
+\hline
 \rowcolor{tableodd}
 336390 & \$3,172,000 & \$743,000 & \$574,000 & \$1,900,000 & 0.6 & 2.56 & 3.31 \\
+\hline
 \rowcolor{white}
 333111 & \$3,127,292 & \$588,895 & \$549,500 & \$2,400,000 & 0.77 & 4.08 & 4.37 \\
+\hline
 \rowcolor{tableodd}
 332919 & \$3,493,053 & \$934,056 & \$700,056 & \$2,500,000 & 0.72 & 2.68 & 3.57 \\
+\hline
 \rowcolor{white}
 332313 & \$3,445,726 & \$721,348 & \$629,470 & \$4,000,000 & 1.16 & 5.55 & 6.35 \\
+\hline
 \rowcolor{tableodd}
 337127 & \$3,317,418 & \$710,828 & \$618,950 & \$2,700,000 & 0.81 & 3.8 & 4.36 \\
+\hline
 \rowcolor{white}
 332710 & \$3,404,875 & \$881,344 & \$606,344 & \$3,500,000 & 1.03 & 3.97 & 5.77 \\
+\hline
 \rowcolor{tableodd}
 332710 & \$2,833,249 & \$653,072 & \$546,072 & \$1,900,000 & 0.67 & 2.91 & 3.48 \\
+\hline
 \rowcolor{white}
 334516 & \$2,816,110 & \$700,853 & \$538,138 & \$2,100,000 & 0.75 & 3.0 & 3.9 \\
+\hline
 \rowcolor{tableodd}
 332322 & \$2,844,787 & \$571,739 & \$451,739 & \$2,400,000 & 0.84 & 4.2 & 5.31 \\
+\hline
 \rowcolor{white}
 339950 & \$3,200,000 & \$713,000 & \$621,122 & \$2,725,000 & 0.85 & 3.82 & 4.39 \\
+\hline
 \end{longtable}
 \end{center}
 
