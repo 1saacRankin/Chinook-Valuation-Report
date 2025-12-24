@@ -1,20 +1,12 @@
 # macOS system files
 .DS_Store
 
-# PDF
-.pdf
-
-# CSV
-.csv
-
-# AUX
-.aux
-
-# LOG
-.log
-
-# TOC
-.toc
+# Ignore these extensions in ALL directories
+*.pdf
+*.csv
+*.aux
+*.log
+*.toc
 
 # scrap folder
 scrap/
