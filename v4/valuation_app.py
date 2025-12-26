@@ -3,9 +3,94 @@ import pandas as pd
 import json
 from datetime import datetime
 import io
+from rapidfuzz import fuzz, process
 
 # Set page config
 st.set_page_config(page_title="Business Valuation Report Generator", layout="wide")
+
+# NAICS Code Structure (simplified hierarchy)
+NAICS_CODES = {
+    "11": "Agriculture, Forestry, Fishing and Hunting",
+    "21": "Mining, Quarrying, and Oil and Gas Extraction",
+    "22": "Utilities",
+    "23": "Construction",
+    "31-33": "Manufacturing",
+    "42": "Wholesale Trade",
+    "44-45": "Retail Trade",
+    "48-49": "Transportation and Warehousing",
+    "51": "Information",
+    "52": "Finance and Insurance",
+    "53": "Real Estate and Rental and Leasing",
+    "54": "Professional, Scientific, and Technical Services",
+    "55": "Management of Companies and Enterprises",
+    "56": "Administrative and Support Services",
+    "61": "Educational Services",
+    "62": "Health Care and Social Assistance",
+    "71": "Arts, Entertainment, and Recreation",
+    "72": "Accommodation and Food Services",
+    "81": "Other Services (except Public Administration)",
+    "92": "Public Administration"
+}
+
+NAICS_SUBCODES = {
+    "31-33": {
+        "311": "Food Manufacturing",
+        "312": "Beverage and Tobacco Product Manufacturing",
+        "313": "Textile Mills",
+        "314": "Textile Product Mills",
+        "315": "Apparel Manufacturing",
+        "316": "Leather and Allied Product Manufacturing",
+        "321": "Wood Product Manufacturing",
+        "322": "Paper Manufacturing",
+        "323": "Printing and Related Support Activities",
+        "324": "Petroleum and Coal Products Manufacturing",
+        "325": "Chemical Manufacturing",
+        "326": "Plastics and Rubber Products Manufacturing",
+        "327": "Nonmetallic Mineral Product Manufacturing",
+        "331": "Primary Metal Manufacturing",
+        "332": "Fabricated Metal Product Manufacturing",
+        "333": "Machinery Manufacturing",
+        "334": "Computer and Electronic Product Manufacturing",
+        "335": "Electrical Equipment Manufacturing",
+        "336": "Transportation Equipment Manufacturing",
+        "337": "Furniture and Related Product Manufacturing",
+        "339": "Miscellaneous Manufacturing"
+    },
+    "311": {
+        "3111": "Animal Food Manufacturing",
+        "3112": "Grain and Oilseed Milling",
+        "3113": "Sugar and Confectionery Product Manufacturing",
+        "3114": "Fruit and Vegetable Preserving",
+        "3115": "Dairy Product Manufacturing",
+        "3116": "Animal Slaughtering and Processing",
+        "3117": "Seafood Product Preparation and Packaging",
+        "3118": "Bakeries and Tortilla Manufacturing",
+        "3119": "Other Food Manufacturing"
+    },
+    "3119": {
+        "31194": "Seasoning and Dressing Manufacturing",
+        "31199": "All Other Food Manufacturing"
+    },
+    "31199": {
+        "311999": "All Other Miscellaneous Food Manufacturing"
+    }
+}
+
+# Required financial row items
+REQUIRED_FINANCIAL_ITEMS = [
+    "Total Revenue",
+    "Total Cost of Goods Sold",
+    "Total Operating Expenses",
+    "Other Income"
+]
+
+REQUIRED_NORMALIZATION_ITEMS = [
+    "Amortization",
+    "Interest on Capital Lease/Equipment",
+    "Owner/Management Salary",
+    "Discretionary Expenses",
+    "Replacement Manager Salary"
+]
 
 # Helper function to convert score to text answer
 def score_to_answer(score, question_type):
@@ -20,26 +105,32 @@ def score_to_answer(score, question_type):
     }
     return answers[question_type].get(score, str(score))
 
-# Initialize session state for data persistence
+# Initialize session state for default Harry's Honey data
 if 'financial_data' not in st.session_state:
     st.session_state.financial_data = pd.DataFrame({
-        'Year': ['2021', '2022', '2023', '2024', '2025 proj.'],
-        'Revenue': [1730366, 2280483, 2615371, 3312931, 2963256],
-        'Cost of Goods': [1260059, 1593521, 2117285, 2282139, 1346344],
-        'Total Expenses': [406140, 445220, 468856, 475083, 1106037],
-        'Other Income': [0, 0, 20000, 0, 0]
+        'Year': ['2020', '2021', '2022', '2023', '2024', '2025'],
+        'Revenue': [450000, 520000, 585000, 650000, 710000, 780000],
+        'Cost of Goods': [180000, 208000, 234000, 260000, 284000, 312000],
+        'Total Expenses': [135000, 145000, 155000, 165000, 175000, 185000],
+        'Other Income': [0, 0, 5000, 0, 0, 0]
     })
 
 if 'normalization_data' not in st.session_state:
     st.session_state.normalization_data = pd.DataFrame({
-        'Year': ['2021', '2022', '2023', '2024', '2025 proj.'],
-        'Amortization': [114858, 103448, 104370, 98792, 0],
-        'Interest (Capital Lease)': [14951, 15007, 11606, 4171, 0],
-        'Management Salary': [0, 0, 0, 0, 230000],
-        'Discretionary Expense': [0, 0, 0, 0, 0],
-        'Manager Salary': [90000, 100000, 110000, 120000, 120000],
-        'Year Weighting (%)': [0, 0, 0, 50, 50]
+        'Year': ['2020', '2021', '2022', '2023', '2024', '2025'],
+        'Amortization': [25000, 28000, 30000, 32000, 34000, 36000],
+        'Interest (Capital Lease)': [8000, 7500, 7000, 6500, 6000, 5500],
+        'Management Salary': [0, 0, 0, 0, 0, 85000],
+        'Discretionary Expense': [0, 0, 0, 0, 0, 0],
+        'Manager Salary': [60000, 62000, 64000, 66000, 68000, 70000],
+        'Year Weighting (%)': [0, 0, 10, 20, 30, 40]
     })
+
+if 'uploaded_data' not in st.session_state:
+    st.session_state.uploaded_data = None
+
+if 'row_mapping' not in st.session_state:
+    st.session_state.row_mapping = {}
 
 # Title
 st.title("🏢 Business Valuation Report Generator")
@@ -55,11 +146,56 @@ with tab1:
     col1, col2 = st.columns(2)
     
     with col1:
-        company_name = st.text_input("Company Name", value="Persaj Countertops Inc.")
-        naics_code = st.text_input("NAICS Industry Code", value="Wood Kitchen Cabinet and Countertop Manufacturing (33711)")
+        company_name = st.text_input("Company Name", value="Harry's Honey")
+        
+        # NAICS Code Selection
+        st.subheader("NAICS Industry Code")
+        
+        # Level 1: Sector
+        sector = st.selectbox(
+            "Select Industry Sector",
+            options=list(NAICS_CODES.keys()),
+            format_func=lambda x: f"{x} - {NAICS_CODES[x]}",
+            index=4  # Manufacturing
+        )
+        
+        # Level 2: Subsector (if Manufacturing)
+        naics_full_code = sector
+        naics_description = NAICS_CODES[sector]
+        
+        if sector in NAICS_SUBCODES:
+            subsector = st.selectbox(
+                "Select Subsector",
+                options=list(NAICS_SUBCODES[sector].keys()),
+                format_func=lambda x: f"{x} - {NAICS_SUBCODES[sector][x]}"
+            )
+            naics_full_code = subsector
+            naics_description = NAICS_SUBCODES[sector][subsector]
+            
+            # Level 3: Industry Group
+            if subsector in NAICS_SUBCODES:
+                industry_group = st.selectbox(
+                    "Select Industry Group",
+                    options=list(NAICS_SUBCODES[subsector].keys()),
+                    format_func=lambda x: f"{x} - {NAICS_SUBCODES[subsector][x]}"
+                )
+                naics_full_code = industry_group
+                naics_description = NAICS_SUBCODES[subsector][industry_group]
+                
+                # Level 4: Detailed Industry
+                if industry_group in NAICS_SUBCODES:
+                    detailed = st.selectbox(
+                        "Select Detailed Industry",
+                        options=list(NAICS_SUBCODES[industry_group].keys()),
+                        format_func=lambda x: f"{x} - {NAICS_SUBCODES[industry_group][x]}"
+                    )
+                    naics_full_code = detailed
+                    naics_description = NAICS_SUBCODES[industry_group][detailed]
+        
+        st.info(f"**Selected NAICS Code:** {naics_full_code} - {naics_description}")
     
     with col2:
-        report_date = st.date_input("Report Date", value=datetime(2025, 11, 22))
+        report_date = st.date_input("Report Date", value=datetime.today())
         
     st.divider()
     
@@ -67,16 +203,16 @@ with tab1:
     col1, col2, col3 = st.columns(3)
     
     with col1:
-        sample_size = st.number_input("Sample Size", value=1768, step=1)
-        cost_of_goods_avg = st.number_input("Cost of Goods Avg (%)", value=65.68, step=0.01)
+        sample_size = st.number_input("Sample Size", value=850, step=1)
+        cost_of_goods_avg = st.number_input("Cost of Goods Avg (%)", value=40.0, step=0.01)
     
     with col2:
-        total_expenses_avg = st.number_input("Total Expenses Avg (%)", value=28.55, step=0.01)
-        total_employment_costs_avg = st.number_input("Employment Costs Avg (%)", value=33.06, step=0.01)
+        total_expenses_avg = st.number_input("Total Expenses Avg (%)", value=30.0, step=0.01)
+        total_employment_costs_avg = st.number_input("Employment Costs Avg (%)", value=25.0, step=0.01)
     
     with col3:
-        your_cost_of_goods = st.number_input("Your Cost of Goods (%)", value=57.81, step=0.01)
-        your_total_expenses = st.number_input("Your Total Expenses (%)", value=25.19, step=0.01)
+        your_cost_of_goods = st.number_input("Your Cost of Goods (%)", value=40.0, step=0.01)
+        your_total_expenses = st.number_input("Your Total Expenses (%)", value=28.5, step=0.01)
         your_employment_costs = st.number_input("Your Employment Costs (%)", value=0.0, step=0.01)
 
 # ==================== TAB 2: FINANCIAL DATA ====================
@@ -85,19 +221,244 @@ with tab2:
     
     # File upload option
     st.subheader("📁 Upload Financial Data (Optional)")
-    uploaded_file = st.file_uploader("Upload CSV or Excel file with financial data", type=['csv', 'xlsx'])
+    
+    col1, col2 = st.columns([2, 1])
+    with col1:
+        uploaded_file = st.file_uploader("Upload CSV or Excel file with financial data", type=['csv', 'xlsx'])
+    with col2:
+        st.markdown("**Required Items:**")
+        for item in REQUIRED_FINANCIAL_ITEMS:
+            st.markdown(f"• {item}")
     
     if uploaded_file is not None:
         try:
+            # Read file
             if uploaded_file.name.endswith('.csv'):
-                df = pd.read_csv(uploaded_file)
+                df_uploaded = pd.read_csv(uploaded_file)
             else:
-                df = pd.read_excel(uploaded_file)
+                df_uploaded = pd.read_excel(uploaded_file)
             
-            st.success("File uploaded successfully!")
-            st.session_state.financial_data = df
+            st.session_state.uploaded_data = df_uploaded
+            st.success("✅ File uploaded successfully!")
+            
+            # Show preview
+            with st.expander("📊 Preview Uploaded Data"):
+                st.dataframe(df_uploaded.head(10), use_container_width=True)
+            
+            st.divider()
+            
+            # Map columns using fuzzy matching
+            st.subheader("🔗 Map Your Data to Required Fields")
+            st.markdown("*We've attempted to automatically match your columns. Please verify and adjust as needed.*")
+            
+            # Get all potential row/column names from uploaded data
+            if 'Year' in df_uploaded.columns or 'year' in df_uploaded.columns:
+                # Data is in columns (years as columns)
+                available_items = [col for col in df_uploaded.columns if col.lower() not in ['year', 'item', 'category']]
+                is_transposed = False
+            else:
+                # Data is in rows (years as rows)
+                if len(df_uploaded.columns) > 1:
+                    available_items = df_uploaded.iloc[:, 0].tolist()
+                    is_transposed = True
+                else:
+                    st.error("Could not determine data structure. Please ensure your file has year columns or a description column.")
+                    available_items = []
+            
+            # Create mapping interface for financial items
+            st.markdown("**Income Statement Items:**")
+            financial_mapping = {}
+            
+            for required_item in REQUIRED_FINANCIAL_ITEMS:
+                col1, col2, col3 = st.columns([2, 2, 1])
+                
+                with col1:
+                    st.markdown(f"**{required_item}**")
+                
+                with col2:
+                    # Try fuzzy matching
+                    if available_items:
+                        matches = process.extract(required_item, available_items, scorer=fuzz.token_sort_ratio, limit=3)
+                        best_match = matches[0][0] if matches and matches[0][1] > 60 else None
+                        
+                        default_index = available_items.index(best_match) if best_match in available_items else 0
+                    else:
+                        default_index = 0
+                    
+                    selected = st.selectbox(
+                        "Map to:",
+                        options=["[None - Fill with 0]"] + available_items,
+                        index=default_index + 1 if available_items and best_match else 0,
+                        key=f"map_fin_{required_item}"
+                    )
+                    
+                    financial_mapping[required_item] = None if selected == "[None - Fill with 0]" else selected
+                
+                with col3:
+                    if financial_mapping[required_item] is None:
+                        st.warning("⚠️")
+            
+            st.divider()
+            
+            # Normalization items
+            st.markdown("**Normalization Items:**")
+            normalization_mapping = {}
+            
+            for required_item in REQUIRED_NORMALIZATION_ITEMS:
+                col1, col2, col3 = st.columns([2, 2, 1])
+                
+                with col1:
+                    st.markdown(f"**{required_item}**")
+                
+                with col2:
+                    # Try fuzzy matching
+                    if available_items:
+                        matches = process.extract(required_item, available_items, scorer=fuzz.token_sort_ratio, limit=3)
+                        best_match = matches[0][0] if matches and matches[0][1] > 60 else None
+                        
+                        default_index = available_items.index(best_match) if best_match in available_items else 0
+                    else:
+                        default_index = 0
+                    
+                    selected = st.selectbox(
+                        "Map to:",
+                        options=["[None - Fill with 0]"] + available_items,
+                        index=default_index + 1 if available_items and best_match else 0,
+                        key=f"map_norm_{required_item}"
+                    )
+                    
+                    normalization_mapping[required_item] = None if selected == "[None - Fill with 0]" else selected
+                
+                with col3:
+                    if normalization_mapping[required_item] is None:
+                        st.warning("⚠️")
+            
+            st.divider()
+            
+            # Process button
+            if st.button("✨ Process Uploaded Data", type="primary", use_container_width=True):
+                # Extract years and create new dataframes
+                if is_transposed:
+                    # Years are in rows
+                    year_col_idx = next((i for i, col in enumerate(df_uploaded.columns) if 'year' in col.lower()), 0)
+                    years = df_uploaded.iloc[:, year_col_idx].tolist()
+                    
+                    # Extract financial data
+                    revenue_vals = []
+                    cogs_vals = []
+                    expenses_vals = []
+                    other_income_vals = []
+                    
+                    for item, mapped in financial_mapping.items():
+                        if mapped:
+                            row_idx = available_items.index(mapped)
+                            values = df_uploaded.iloc[row_idx, 1:].tolist()
+                        else:
+                            values = [0] * len(years)
+                        
+                        if "Revenue" in item:
+                            revenue_vals = values
+                        elif "Cost" in item:
+                            cogs_vals = values
+                        elif "Expenses" in item:
+                            expenses_vals = values
+                        elif "Other Income" in item:
+                            other_income_vals = values
+                else:
+                    # Years are in columns
+                    year_cols = [col for col in df_uploaded.columns if str(col).isdigit() or 'year' in str(col).lower()]
+                    years = year_cols
+                    
+                    # This structure needs more complex handling - simplified for now
+                    st.error("Column-based year format not fully implemented. Please transpose your data so years are rows.")
+                    revenue_vals = [0] * len(years)
+                    cogs_vals = [0] * len(years)
+                    expenses_vals = [0] * len(years)
+                    other_income_vals = [0] * len(years)
+                
+                # Calculate projection year
+                if len(years) >= 2:
+                    # Calculate average growth rate
+                    numeric_revenues = [float(x) for x in revenue_vals if str(x).replace('.', '').replace('-', '').isdigit()]
+                    if len(numeric_revenues) >= 2:
+                        growth_rates = [(numeric_revenues[i] - numeric_revenues[i-1]) / numeric_revenues[i-1] 
+                                      for i in range(1, len(numeric_revenues))]
+                        avg_growth = sum(growth_rates) / len(growth_rates)
+                        
+                        # Project next year
+                        last_year = int(years[-1]) if str(years[-1]).isdigit() else 2026
+                        proj_year = last_year + 1
+                        
+                        proj_revenue = numeric_revenues[-1] * (1 + avg_growth)
+                        proj_cogs = (float(cogs_vals[-1]) * (1 + avg_growth) if cogs_vals[-1] else 0)
+                        proj_expenses = (float(expenses_vals[-1]) * (1 + avg_growth) if expenses_vals[-1] else 0)
+                        proj_other = 0
+                        
+                        years.append(str(proj_year))
+                        revenue_vals.append(proj_revenue)
+                        cogs_vals.append(proj_cogs)
+                        expenses_vals.append(proj_expenses)
+                        other_income_vals.append(proj_other)
+                
+                # Create new dataframes
+                st.session_state.financial_data = pd.DataFrame({
+                    'Year': [str(y) for y in years],
+                    'Revenue': revenue_vals,
+                    'Cost of Goods': cogs_vals,
+                    'Total Expenses': expenses_vals,
+                    'Other Income': other_income_vals
+                })
+                
+                # Process normalizations similarly
+                amort_vals = []
+                interest_vals = []
+                mgmt_salary_vals = []
+                discr_exp_vals = []
+                mgr_salary_vals = []
+                
+                for item, mapped in normalization_mapping.items():
+                    if mapped and is_transposed:
+                        row_idx = available_items.index(mapped)
+                        values = df_uploaded.iloc[row_idx, 1:len(years)+1].tolist()
+                    else:
+                        values = [0] * len(years)
+                    
+                    if "Amortization" in item:
+                        amort_vals = values
+                    elif "Interest" in item:
+                        interest_vals = values
+                    elif "Owner" in item or "Management Salary" in item:
+                        mgmt_salary_vals = values
+                    elif "Discretionary" in item:
+                        discr_exp_vals = values
+                    elif "Replacement" in item or "Manager Salary" in item:
+                        mgr_salary_vals = values
+                
+                # Create weighting (most recent years get more weight)
+                total_years = len(years)
+                if total_years <= 3:
+                    weightings = [100 // total_years] * total_years
+                else:
+                    # Last year gets most weight
+                    weightings = [0] * (total_years - 3) + [20, 30, 50]
+                
+                st.session_state.normalization_data = pd.DataFrame({
+                    'Year': [str(y) for y in years],
+                    'Amortization': amort_vals,
+                    'Interest (Capital Lease)': interest_vals,
+                    'Management Salary': mgmt_salary_vals,
+                    'Discretionary Expense': discr_exp_vals,
+                    'Manager Salary': mgr_salary_vals,
+                    'Year Weighting (%)': weightings
+                })
+                
+                st.success("✅ Data processed successfully! Scroll down to review and edit.")
+                st.rerun()
+        
         except Exception as e:
             st.error(f"Error reading file: {e}")
+            import traceback
+            st.code(traceback.format_exc())
     
     st.divider()
     
@@ -105,10 +466,27 @@ with tab2:
     st.subheader("Income Statement Data")
     st.markdown("*Edit the table directly. Gross Profit and Net Income will be calculated automatically.*")
     
+    # Add delete year functionality
+    col1, col2 = st.columns([3, 1])
+    with col2:
+        years_to_delete = st.multiselect(
+            "Delete Years:",
+            options=st.session_state.financial_data['Year'].tolist(),
+            key="delete_years"
+        )
+        if st.button("🗑️ Delete Selected Years") and years_to_delete:
+            st.session_state.financial_data = st.session_state.financial_data[
+                ~st.session_state.financial_data['Year'].isin(years_to_delete)
+            ].reset_index(drop=True)
+            st.session_state.normalization_data = st.session_state.normalization_data[
+                ~st.session_state.normalization_data['Year'].isin(years_to_delete)
+            ].reset_index(drop=True)
+            st.rerun()
+    
     edited_financial = st.data_editor(
         st.session_state.financial_data,
         use_container_width=True,
-        num_rows="fixed",
+        num_rows="dynamic",
         key="financial_editor"
     )
     
@@ -131,7 +509,7 @@ with tab2:
     edited_normalization = st.data_editor(
         st.session_state.normalization_data,
         use_container_width=True,
-        num_rows="fixed",
+        num_rows="dynamic",
         key="normalization_editor"
     )
     
@@ -373,27 +751,29 @@ with tab4:
     sde_values = [net_income[i] + total_adjustments[i] for i in range(len(net_income))]
     adj_ebitda_values = [sde_values[i] - norm_data['Manager Salary'].tolist()[i] for i in range(len(sde_values))]
     
-    # Calculate weighted averages (using last 2 years with 50% each)
-    weighted_avg_revenue = (fin_data['Revenue'].iloc[3] * 0.5 + fin_data['Revenue'].iloc[4] * 0.5)
-    weighted_avg_sde = (sde_values[3] * 0.5 + sde_values[4] * 0.5)
+    # Calculate weighted averages using the weighting column
+    weightings = norm_data['Year Weighting (%)'].tolist()
+    total_weight = sum(weightings)
     
-    # Simple valuation calculation (these would normally come from comparable transactions)
+    if total_weight > 0:
+        weighted_avg_revenue = sum(fin_data['Revenue'].tolist()[i] * weightings[i] / 100 for i in range(len(weightings)))
+        weighted_avg_sde = sum(sde_values[i] * weightings[i] / 100 for i in range(len(weightings)))
+    else:
+        weighted_avg_revenue = fin_data['Revenue'].iloc[-1]
+        weighted_avg_sde = sde_values[-1]
+    
+    # Simple valuation calculation
     revenue_multiple = 0.84
     sde_multiple = 3.7
     adj_ebitda_multiple = 4.45
     mpsp = int(weighted_avg_revenue * revenue_multiple)
     
-    # Calculate scorecard adjustments based on scores
+    # Calculate scorecard adjustments
     def calculate_section_adjustment(scores, weight):
-        """Calculate valuation adjustment for a section based on scores"""
         avg_score = sum(scores) / len(scores)
-        # Score of 3 = neutral (0% adjustment)
-        # Score of 1 = -weight% adjustment
-        # Score of 5 = +weight% adjustment
         adjustment_pct = ((avg_score - 3) / 2) * weight
         return adjustment_pct
     
-    # Calculate adjustments for each section
     finance_adj = calculate_section_adjustment(
         [documented_processes, accountant, annual_budget, payables_on_time], 6.25
     )
@@ -418,7 +798,7 @@ with tab4:
     output_data = {
         "company": {
             "name": company_name,
-            "naics_code": naics_code,
+            "naics_code": f"{naics_full_code} - {naics_description}",
             "report_date": report_date.strftime("%B %d, %Y")
         },
         "valuation": {
@@ -561,24 +941,24 @@ with tab4:
         },
         "comparable_transactions": {
             "count": 16,
-            "revenue_range": [2816110, 3705479],
+            "revenue_range": [450000, 800000],
             "transactions": [
-                {"naics": "336411", "revenue": 3702307, "sde": 952988, "adj_ebitda": 812988, "price": 4250000, "rev_mult": 1.15, "sde_mult": 4.46, "ebitda_mult": 5.23},
-                {"naics": "336211", "revenue": 3648000, "sde": 853000, "adj_ebitda": 753000, "price": 2900000, "rev_mult": 0.79, "sde_mult": 3.4, "ebitda_mult": 3.85},
-                {"naics": "333318", "revenue": 3136708, "sde": 784618, "adj_ebitda": 692740, "price": 2950000, "rev_mult": 0.94, "sde_mult": 3.76, "ebitda_mult": 4.26},
-                {"naics": "332710", "revenue": 3705479, "sde": 758541, "adj_ebitda": 670992, "price": 2712283, "rev_mult": 0.73, "sde_mult": 3.58, "ebitda_mult": 4.04},
-                {"naics": "332721", "revenue": 3276000, "sde": 877000, "adj_ebitda": 604000, "price": 4864000, "rev_mult": 1.48, "sde_mult": 5.55, "ebitda_mult": 8.05},
-                {"naics": "336310", "revenue": 3673000, "sde": 694878, "adj_ebitda": 603000, "price": 2139000, "rev_mult": 0.58, "sde_mult": 3.08, "ebitda_mult": 3.55},
-                {"naics": "336390", "revenue": 3172000, "sde": 743000, "adj_ebitda": 574000, "price": 1900000, "rev_mult": 0.6, "sde_mult": 2.56, "ebitda_mult": 3.31},
-                {"naics": "333111", "revenue": 3127292, "sde": 588895, "adj_ebitda": 549500, "price": 2400000, "rev_mult": 0.77, "sde_mult": 4.08, "ebitda_mult": 4.37},
-                {"naics": "332919", "revenue": 3493053, "sde": 934056, "adj_ebitda": 700056, "price": 2500000, "rev_mult": 0.72, "sde_mult": 2.68, "ebitda_mult": 3.57},
-                {"naics": "332313", "revenue": 3445726, "sde": 721348, "adj_ebitda": 629470, "price": 4000000, "rev_mult": 1.16, "sde_mult": 5.55, "ebitda_mult": 6.35},
-                {"naics": "337127", "revenue": 3317418, "sde": 710828, "adj_ebitda": 618950, "price": 2700000, "rev_mult": 0.81, "sde_mult": 3.8, "ebitda_mult": 4.36},
-                {"naics": "332710", "revenue": 3404875, "sde": 881344, "adj_ebitda": 606344, "price": 3500000, "rev_mult": 1.03, "sde_mult": 3.97, "ebitda_mult": 5.77},
-                {"naics": "332710", "revenue": 2833249, "sde": 653072, "adj_ebitda": 546072, "price": 1900000, "rev_mult": 0.67, "sde_mult": 2.91, "ebitda_mult": 3.48},
-                {"naics": "334516", "revenue": 2816110, "sde": 700853, "adj_ebitda": 538138, "price": 2100000, "rev_mult": 0.75, "sde_mult": 3.0, "ebitda_mult": 3.9},
-                {"naics": "332322", "revenue": 2844787, "sde": 571739, "adj_ebitda": 451739, "price": 2400000, "rev_mult": 0.84, "sde_mult": 4.2, "ebitda_mult": 5.31},
-                {"naics": "339950", "revenue": 3200000, "sde": 713000, "adj_ebitda": 621122, "price": 2725000, "rev_mult": 0.85, "sde_mult": 3.82, "ebitda_mult": 4.39}
+                {"naics": "311999", "revenue": 780000, "sde": 245000, "adj_ebitda": 175000, "price": 650000, "rev_mult": 0.83, "sde_mult": 2.65, "ebitda_mult": 3.71},
+                {"naics": "311999", "revenue": 750000, "sde": 225000, "adj_ebitda": 155000, "price": 580000, "rev_mult": 0.77, "sde_mult": 2.58, "ebitda_mult": 3.74},
+                {"naics": "311999", "revenue": 720000, "sde": 210000, "adj_ebitda": 140000, "price": 550000, "rev_mult": 0.76, "sde_mult": 2.62, "ebitda_mult": 3.93},
+                {"naics": "311999", "revenue": 690000, "sde": 195000, "adj_ebitda": 125000, "price": 520000, "rev_mult": 0.75, "sde_mult": 2.67, "ebitda_mult": 4.16},
+                {"naics": "311999", "revenue": 650000, "sde": 180000, "adj_ebitda": 110000, "price": 485000, "rev_mult": 0.75, "sde_mult": 2.69, "ebitda_mult": 4.41},
+                {"naics": "311999", "revenue": 620000, "sde": 170000, "adj_ebitda": 100000, "price": 465000, "rev_mult": 0.75, "sde_mult": 2.74, "ebitda_mult": 4.65},
+                {"naics": "311999", "revenue": 585000, "sde": 160000, "adj_ebitda": 90000, "price": 445000, "rev_mult": 0.76, "sde_mult": 2.78, "ebitda_mult": 4.94},
+                {"naics": "311999", "revenue": 550000, "sde": 150000, "adj_ebitda": 80000, "price": 420000, "rev_mult": 0.76, "sde_mult": 2.8, "ebitda_mult": 5.25},
+                {"naics": "311999", "revenue": 520000, "sde": 142000, "adj_ebitda": 72000, "price": 395000, "rev_mult": 0.76, "sde_mult": 2.78, "ebitda_mult": 5.49},
+                {"naics": "311999", "revenue": 490000, "sde": 135000, "adj_ebitda": 65000, "price": 375000, "rev_mult": 0.77, "sde_mult": 2.78, "ebitda_mult": 5.77},
+                {"naics": "311999", "revenue": 470000, "sde": 128000, "adj_ebitda": 58000, "price": 355000, "rev_mult": 0.76, "sde_mult": 2.77, "ebitda_mult": 6.12},
+                {"naics": "311999", "revenue": 460000, "sde": 125000, "adj_ebitda": 55000, "price": 345000, "rev_mult": 0.75, "sde_mult": 2.76, "ebitda_mult": 6.27},
+                {"naics": "311999", "revenue": 450000, "sde": 120000, "adj_ebitda": 50000, "price": 330000, "rev_mult": 0.73, "sde_mult": 2.75, "ebitda_mult": 6.6},
+                {"naics": "311194", "revenue": 800000, "sde": 260000, "adj_ebitda": 190000, "price": 695000, "rev_mult": 0.87, "sde_mult": 2.67, "ebitda_mult": 3.66},
+                {"naics": "311194", "revenue": 680000, "sde": 185000, "adj_ebitda": 115000, "price": 510000, "rev_mult": 0.75, "sde_mult": 2.76, "ebitda_mult": 4.43},
+                {"naics": "311194", "revenue": 560000, "sde": 155000, "adj_ebitda": 85000, "price": 425000, "rev_mult": 0.76, "sde_mult": 2.74, "ebitda_mult": 5.0}
             ]
         }
     }
@@ -645,11 +1025,15 @@ with st.sidebar:
     st.markdown("""
     ### How to Use
     
-    1. **Company Info**: Enter basic company details and benchmarks
+    1. **Company Info**: 
+       - Enter company name
+       - Select NAICS code from hierarchical menus
+       - Adjust industry benchmarks
     2. **Financial Data**: 
        - Upload CSV/Excel or use default data
-       - Edit financial tables directly
-       - Review calculated values
+       - Map uploaded columns to required fields
+       - Edit tables directly
+       - Delete unwanted years
     3. **Scorecard**: Rate qualitative factors (1-5)
        - 1 = Poor/Needs Improvement
        - 3 = Average/Neutral
@@ -658,6 +1042,12 @@ with st.sidebar:
        - Review summary and adjustments
        - Download JSON file
        - Generate PDF report
+    
+    ### Data Upload Tips
+    - Structure data with years as rows
+    - Include clear column headers
+    - The app uses fuzzy matching to map fields
+    - Review and adjust mappings before processing
     
     ### Scorecard Impact
     - Each section has a weight (% of valuation)
@@ -670,8 +1060,14 @@ with st.sidebar:
     python generate_report.py your_file.json
     pdflatex valuation_report.tex
     ```
+    
+    ### Dependencies
+    Install required packages:
+    ```bash
+    pip install streamlit pandas rapidfuzz
+    ```
     """)
     
     st.divider()
     
-    st.info("💡 **Tip**: Hover over sliders for detailed descriptions of each rating level.")
+    st.info("💡 **Tip**: The projection year is automatically calculated using the average growth rate from your historical data.")
