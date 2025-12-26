@@ -7,6 +7,19 @@ import io
 # Set page config
 st.set_page_config(page_title="Business Valuation Report Generator", layout="wide")
 
+# Helper function to convert score to text answer
+def score_to_answer(score, question_type):
+    """Convert numeric score (1-5) to text answer"""
+    answers = {
+        'yes_no': {1: 'No', 2: 'Rarely', 3: 'Sometimes', 4: 'Usually', 5: 'Yes'},
+        'percentage_low': {1: '>50%', 2: '31-50%', 3: '16-30%', 4: '6-15%', 5: '<5%'},
+        'percentage_high': {1: '<1%', 2: '1-5%', 3: '6-10%', 4: '11-20%', 5: '>20%'},
+        'percentage_reverse': {1: '0%', 2: '1-10%', 3: '11-25%', 4: '26-50%', 5: '>50%'},
+        'ease': {1: "No - It's me and irreplaceable", 2: 'Very difficult', 3: 'Somewhat difficult', 4: 'Possible with training', 5: 'Yes - Easily replaceable'},
+        'revenue_model': {1: 'Transactional/walk-in only', 2: 'Some repeat customers', 3: 'Mix of recurring and transactional', 4: 'Mostly recurring revenue', 5: 'High recurring revenue contracts'}
+    }
+    return answers[question_type].get(score, str(score))
+
 # Initialize session state for data persistence
 if 'financial_data' not in st.session_state:
     st.session_state.financial_data = pd.DataFrame({
@@ -159,11 +172,14 @@ with tab3:
             1, 5, 3,
             help="1 = No documentation, 5 = Fully documented"
         )
+        st.caption(f"Answer: {score_to_answer(documented_processes, 'yes_no')}")
+        
         accountant = st.slider(
             "Do you hire an accountant for year-end statements/tax returns?",
             1, 5, 5,
             help="1 = No, 5 = Yes, certified accountant"
         )
+        st.caption(f"Answer: {score_to_answer(accountant, 'yes_no')}")
     
     with col2:
         annual_budget = st.slider(
@@ -171,11 +187,14 @@ with tab3:
             1, 5, 2,
             help="1 = No, 5 = Yes, detailed budget"
         )
+        st.caption(f"Answer: {score_to_answer(annual_budget, 'yes_no')}")
+        
         payables_on_time = st.slider(
             "Are your payables always paid in full and on-time?",
             1, 5, 5,
             help="1 = Often late, 5 = Always on time"
         )
+        st.caption(f"Answer: {score_to_answer(payables_on_time, 'yes_no')}")
     
     st.divider()
     
@@ -190,11 +209,14 @@ with tab3:
             1, 5, 2,
             help="1 = Would collapse, 5 = Would thrive"
         )
+        st.caption(f"Answer: {score_to_answer(thrive_without_owner, 'yes_no')}")
+        
         vacation_over_month = st.slider(
             "Have you taken a vacation longer than 1 month in the past 2 years?",
             1, 5, 1,
             help="1 = No, 5 = Yes, multiple times"
         )
+        st.caption(f"Answer: {score_to_answer(vacation_over_month, 'yes_no')}")
     
     with col2:
         customers_ask_by_name = st.slider(
@@ -202,6 +224,7 @@ with tab3:
             1, 5, 5,
             help="1 = >50%, 5 = 0%"
         )
+        st.caption(f"Answer: {score_to_answer(customers_ask_by_name, 'percentage_low')}")
     
     st.divider()
     
@@ -216,6 +239,7 @@ with tab3:
             1, 5, 4,
             help="1 = No opportunities, 5 = Multiple documented opportunities"
         )
+        st.caption(f"Answer: {score_to_answer(identified_opportunities, 'yes_no')}")
     
     with col2:
         revenue_increase_capacity = st.slider(
@@ -223,6 +247,7 @@ with tab3:
             1, 5, 3,
             help="1 = 0%, 5 = >50%"
         )
+        st.caption(f"Answer: {score_to_answer(revenue_increase_capacity, 'percentage_reverse')}")
     
     st.divider()
     
@@ -235,6 +260,7 @@ with tab3:
         1, 5, 2,
         help="1 = Transactional/walk-in only, 5 = High recurring revenue contracts"
     )
+    st.caption(f"Answer: {score_to_answer(revenue_model, 'revenue_model')}")
     
     st.divider()
     
@@ -249,16 +275,21 @@ with tab3:
             1, 5, 5,
             help="1 = >25%, 5 = <5%"
         )
+        st.caption(f"Answer: {score_to_answer(largest_customer, 'percentage_low')}")
+        
         top_5_customers = st.slider(
             "How much revenue do your top 5 customers represent?",
             1, 5, 4,
             help="1 = >50%, 5 = <10%"
         )
+        st.caption(f"Answer: {score_to_answer(top_5_customers, 'percentage_low')}")
+        
         replace_sales_person = st.slider(
             "Could you easily replace the person most responsible for sales?",
             1, 5, 1,
             help="1 = It's me and irreplaceable, 5 = Easily replaceable"
         )
+        st.caption(f"Answer: {score_to_answer(replace_sales_person, 'ease')}")
     
     with col2:
         replace_delivery_person = st.slider(
@@ -266,11 +297,14 @@ with tab3:
             1, 5, 1,
             help="1 = It's me and irreplaceable, 5 = Easily replaceable"
         )
+        st.caption(f"Answer: {score_to_answer(replace_delivery_person, 'ease')}")
+        
         replace_supplier = st.slider(
             "Could you easily replace your most important supplier?",
             1, 5, 5,
             help="1 = No alternatives, 5 = Multiple alternatives"
         )
+        st.caption(f"Answer: {score_to_answer(replace_supplier, 'ease')}")
     
     st.divider()
     
@@ -285,11 +319,14 @@ with tab3:
             1, 5, 2,
             help="1 = No, 5 = Yes, systematic process"
         )
+        st.caption(f"Answer: {score_to_answer(customer_feedback, 'yes_no')}")
+        
         marketing_spend = st.slider(
             "How much do you spend on marketing as % of revenue?",
             1, 5, 3,
             help="1 = <1%, 5 = >10%"
         )
+        st.caption(f"Answer: {score_to_answer(marketing_spend, 'percentage_high')}")
     
     with col2:
         google_first_page = st.slider(
@@ -297,11 +334,14 @@ with tab3:
             1, 5, 5,
             help="1 = No, 5 = Yes, top result"
         )
+        st.caption(f"Answer: {score_to_answer(google_first_page, 'yes_no')}")
+        
         written_acquisition_strategy = st.slider(
             "Do you have a written customer acquisition strategy?",
             1, 5, 2,
             help="1 = No, 5 = Yes, comprehensive"
         )
+        st.caption(f"Answer: {score_to_answer(written_acquisition_strategy, 'yes_no')}")
 
 # ==================== TAB 4: EXPORT ====================
 with tab4:
@@ -313,7 +353,7 @@ with tab4:
     **Next Steps:**
     1. Review the data summary below
     2. Click 'Download JSON' to save the file
-    3. Use the JSON file with the Python report generator
+    3. Run: `python generate_report.py your_file.json`
     """)
     
     st.divider()
@@ -343,6 +383,37 @@ with tab4:
     adj_ebitda_multiple = 4.45
     mpsp = int(weighted_avg_revenue * revenue_multiple)
     
+    # Calculate scorecard adjustments based on scores
+    def calculate_section_adjustment(scores, weight):
+        """Calculate valuation adjustment for a section based on scores"""
+        avg_score = sum(scores) / len(scores)
+        # Score of 3 = neutral (0% adjustment)
+        # Score of 1 = -weight% adjustment
+        # Score of 5 = +weight% adjustment
+        adjustment_pct = ((avg_score - 3) / 2) * weight
+        return adjustment_pct
+    
+    # Calculate adjustments for each section
+    finance_adj = calculate_section_adjustment(
+        [documented_processes, accountant, annual_budget, payables_on_time], 6.25
+    )
+    owner_adj = calculate_section_adjustment(
+        [thrive_without_owner, vacation_over_month, customers_ask_by_name], 6.25
+    )
+    growth_adj = calculate_section_adjustment(
+        [identified_opportunities, revenue_increase_capacity], 3.75
+    )
+    recurring_adj = calculate_section_adjustment([revenue_model], 2.5)
+    org_adj = calculate_section_adjustment(
+        [largest_customer, top_5_customers, replace_sales_person, replace_delivery_person, replace_supplier], 3.75
+    )
+    sales_adj = calculate_section_adjustment(
+        [customer_feedback, marketing_spend, google_first_page, written_acquisition_strategy], 2.5
+    )
+    
+    total_adjustment_pct = finance_adj + owner_adj + growth_adj + recurring_adj + org_adj + sales_adj
+    adjusted_mpsp = int(mpsp * (1 + total_adjustment_pct / 100))
+    
     # Build JSON structure
     output_data = {
         "company": {
@@ -351,7 +422,8 @@ with tab4:
             "report_date": report_date.strftime("%B %d, %Y")
         },
         "valuation": {
-            "mpsp": mpsp,
+            "mpsp": adjusted_mpsp,
+            "base_mpsp": mpsp,
             "revenue_multiple": revenue_multiple,
             "sde_multiple": sde_multiple,
             "adj_ebitda_multiple": adj_ebitda_multiple,
@@ -391,54 +463,98 @@ with tab4:
         "scorecard": {
             "optimized_valuation": int(mpsp * 1.25),
             "minimum_valuation": int(mpsp * 0.75),
+            "total_adjustment_pct": round(total_adjustment_pct, 2),
             "sections": {
                 "finance_operations": {
                     "weight": 6.25,
-                    "score": {
+                    "adjustment_pct": round(finance_adj, 2),
+                    "questions": {
+                        "documented_processes": score_to_answer(documented_processes, 'yes_no'),
+                        "accountant": score_to_answer(accountant, 'yes_no'),
+                        "annual_budget": score_to_answer(annual_budget, 'yes_no'),
+                        "payables_on_time": score_to_answer(payables_on_time, 'yes_no')
+                    },
+                    "scores": {
                         "documented_processes": documented_processes,
                         "accountant": accountant,
                         "annual_budget": annual_budget,
-                        "payables_on_time": payables_on_time
+                        "payables_on_time": payables_on_time,
+                        "average": round(sum([documented_processes, accountant, annual_budget, payables_on_time]) / 4, 2)
                     }
                 },
                 "owner_dependency": {
                     "weight": 6.25,
-                    "score": {
+                    "adjustment_pct": round(owner_adj, 2),
+                    "questions": {
+                        "thrive_without_owner": score_to_answer(thrive_without_owner, 'yes_no'),
+                        "vacation_over_month": score_to_answer(vacation_over_month, 'yes_no'),
+                        "customers_ask_by_name_pct": score_to_answer(customers_ask_by_name, 'percentage_low')
+                    },
+                    "scores": {
                         "thrive_without_owner": thrive_without_owner,
                         "vacation_over_month": vacation_over_month,
-                        "customers_ask_by_name": customers_ask_by_name
+                        "customers_ask_by_name": customers_ask_by_name,
+                        "average": round(sum([thrive_without_owner, vacation_over_month, customers_ask_by_name]) / 3, 2)
                     }
                 },
                 "growth_potential": {
                     "weight": 3.75,
-                    "score": {
+                    "adjustment_pct": round(growth_adj, 2),
+                    "questions": {
+                        "identified_opportunities": score_to_answer(identified_opportunities, 'yes_no'),
+                        "revenue_increase_capacity": score_to_answer(revenue_increase_capacity, 'percentage_reverse')
+                    },
+                    "scores": {
                         "identified_opportunities": identified_opportunities,
-                        "revenue_increase_capacity": revenue_increase_capacity
+                        "revenue_increase_capacity": revenue_increase_capacity,
+                        "average": round(sum([identified_opportunities, revenue_increase_capacity]) / 2, 2)
                     }
                 },
                 "recurring_revenues": {
                     "weight": 2.5,
-                    "score": {
-                        "revenue_model": revenue_model
+                    "adjustment_pct": round(recurring_adj, 2),
+                    "questions": {
+                        "revenue_model": score_to_answer(revenue_model, 'revenue_model')
+                    },
+                    "scores": {
+                        "revenue_model": revenue_model,
+                        "average": revenue_model
                     }
                 },
                 "organizational_stability": {
                     "weight": 3.75,
-                    "score": {
+                    "adjustment_pct": round(org_adj, 2),
+                    "questions": {
+                        "largest_customer_pct": score_to_answer(largest_customer, 'percentage_low'),
+                        "top_5_customers_pct": score_to_answer(top_5_customers, 'percentage_low'),
+                        "replace_sales_person": score_to_answer(replace_sales_person, 'ease'),
+                        "replace_delivery_person": score_to_answer(replace_delivery_person, 'ease'),
+                        "replace_supplier": score_to_answer(replace_supplier, 'ease')
+                    },
+                    "scores": {
                         "largest_customer": largest_customer,
                         "top_5_customers": top_5_customers,
                         "replace_sales_person": replace_sales_person,
                         "replace_delivery_person": replace_delivery_person,
-                        "replace_supplier": replace_supplier
+                        "replace_supplier": replace_supplier,
+                        "average": round(sum([largest_customer, top_5_customers, replace_sales_person, replace_delivery_person, replace_supplier]) / 5, 2)
                     }
                 },
                 "sales_marketing": {
                     "weight": 2.5,
-                    "score": {
+                    "adjustment_pct": round(sales_adj, 2),
+                    "questions": {
+                        "customer_feedback": score_to_answer(customer_feedback, 'yes_no'),
+                        "marketing_spend_pct": score_to_answer(marketing_spend, 'percentage_high'),
+                        "google_first_page": score_to_answer(google_first_page, 'yes_no'),
+                        "written_acquisition_strategy": score_to_answer(written_acquisition_strategy, 'yes_no')
+                    },
+                    "scores": {
                         "customer_feedback": customer_feedback,
                         "marketing_spend": marketing_spend,
                         "google_first_page": google_first_page,
-                        "written_acquisition_strategy": written_acquisition_strategy
+                        "written_acquisition_strategy": written_acquisition_strategy,
+                        "average": round(sum([customer_feedback, marketing_spend, google_first_page, written_acquisition_strategy]) / 4, 2)
                     }
                 }
             }
@@ -472,7 +588,9 @@ with tab4:
     col1, col2, col3 = st.columns(3)
     
     with col1:
-        st.metric("Most Probable Selling Price", f"${mpsp:,.0f}")
+        st.metric("Base MPSP", f"${mpsp:,.0f}")
+        st.metric("Adjusted MPSP", f"${adjusted_mpsp:,.0f}", 
+                  delta=f"{total_adjustment_pct:+.1f}%")
     with col2:
         st.metric("Weighted Avg Revenue", f"${weighted_avg_revenue:,.0f}")
     with col3:
@@ -480,25 +598,26 @@ with tab4:
     
     st.divider()
     
-    # Average scorecard scores
-    all_scores = [
-        documented_processes, accountant, annual_budget, payables_on_time,
-        thrive_without_owner, vacation_over_month, customers_ask_by_name,
-        identified_opportunities, revenue_increase_capacity, revenue_model,
-        largest_customer, top_5_customers, replace_sales_person, replace_delivery_person, replace_supplier,
-        customer_feedback, marketing_spend, google_first_page, written_acquisition_strategy
+    # Scorecard breakdown
+    st.subheader("📈 Scorecard Breakdown")
+    
+    sections_data = [
+        ("Finance & Operations", finance_adj, (documented_processes + accountant + annual_budget + payables_on_time) / 4),
+        ("Owner Dependency", owner_adj, (thrive_without_owner + vacation_over_month + customers_ask_by_name) / 3),
+        ("Growth Potential", growth_adj, (identified_opportunities + revenue_increase_capacity) / 2),
+        ("Recurring Revenues", recurring_adj, revenue_model),
+        ("Organizational Stability", org_adj, (largest_customer + top_5_customers + replace_sales_person + replace_delivery_person + replace_supplier) / 5),
+        ("Sales & Marketing", sales_adj, (customer_feedback + marketing_spend + google_first_page + written_acquisition_strategy) / 4)
     ]
-    avg_score = sum(all_scores) / len(all_scores)
     
-    st.subheader("📈 Scorecard Overview")
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        st.metric("Average Scorecard Rating", f"{avg_score:.2f} / 5.0")
-        st.progress(avg_score / 5.0)
-    
-    with col2:
-        st.metric("Valuation Range", f"${int(mpsp * 0.75):,.0f} - ${int(mpsp * 1.25):,.0f}")
+    for section_name, adjustment, avg_score in sections_data:
+        col1, col2, col3 = st.columns([2, 1, 1])
+        with col1:
+            st.write(f"**{section_name}**")
+        with col2:
+            st.metric("Avg Score", f"{avg_score:.2f}/5", delta=None)
+        with col3:
+            st.metric("Adjustment", f"{adjustment:+.2f}%")
     
     st.divider()
     
@@ -512,32 +631,47 @@ with tab4:
     st.download_button(
         label="⬇️ Download JSON File",
         data=json_string,
-        file_name=f"{company_name.replace(' ', '_')}_valuation_data.json",
+        file_name=f"{company_name.replace(' ', '_').replace('.', '')}_valuation_data.json",
         mime="application/json",
         use_container_width=True
     )
     
-    st.success("✅ Ready to download! Use this JSON file with the Python report generator.")
+    st.success("✅ Ready to download! Use this JSON file with: `python generate_report.py your_file.json`")
 
 # Sidebar with instructions
 with st.sidebar:
-    st.image("https://via.placeholder.com/150x50/662D91/FFFFFF?text=Chinook", use_container_width=True)
-    st.title("Instructions")
+    st.title("📖 Instructions")
     
     st.markdown("""
     ### How to Use
     
-    1. **Company Info**: Enter basic company details
+    1. **Company Info**: Enter basic company details and benchmarks
     2. **Financial Data**: 
        - Upload CSV/Excel or use default data
        - Edit financial tables directly
+       - Review calculated values
     3. **Scorecard**: Rate qualitative factors (1-5)
-    4. **Export**: Download JSON file
+       - 1 = Poor/Needs Improvement
+       - 3 = Average/Neutral
+       - 5 = Excellent/Best
+    4. **Export**: 
+       - Review summary and adjustments
+       - Download JSON file
+       - Generate PDF report
     
-    ### Tips
-    - All tables are editable
-    - Calculated fields update automatically
-    - Scorecard: 1 = Poor, 5 = Excellent
-    - Download JSON for report generation
+    ### Scorecard Impact
+    - Each section has a weight (% of valuation)
+    - Scores above 3 increase valuation
+    - Scores below 3 decrease valuation
+    - Total adjustment: ±25% maximum
     
+    ### Generate Report
+    ```bash
+    python generate_report.py your_file.json
+    pdflatex valuation_report.tex
+    ```
     """)
+    
+    st.divider()
+    
+    st.info("💡 **Tip**: Hover over sliders for detailed descriptions of each rating level.")

@@ -12,17 +12,25 @@ from pathlib import Path
 
 def format_currency(value):
     """Format number as currency with $ and commas"""
-    return f"\\${value:,.0f}"
+    try:
+        return f"\\${value:,.0f}"
+    except (ValueError, TypeError):
+        return "\\$0"
 
 
 def format_percent(value):
     """Format number as percentage"""
-    return f"{value:.2f}\\%"
+    try:
+        return f"{value:.2f}\\%"
+    except (ValueError, TypeError):
+        return "0.00\\%"
 
 
 def escape_latex(text):
     """Escape special LaTeX characters in text"""
-    # Replace & with \&, but only if it's not already escaped
+    if not isinstance(text, str):
+        text = str(text)
+    
     replacements = {
         '&': '\\&',
         '%': '\\%',
@@ -53,23 +61,122 @@ def calculate_net_income_percent(net_income, revenue):
     return (net_income / revenue) * 100
 
 
+def score_to_position(score, scale_width=8):
+    """
+    Convert a score (1-5) to a position on the scale (0-scale_width)
+    Score of 1 = left edge (0)
+    Score of 3 = center (scale_width/2)
+    Score of 5 = right edge (scale_width)
+    """
+    if score < 1:
+        score = 1
+    elif score > 5:
+        score = 5
+    
+    # Map score 1-5 to position 0-scale_width
+    position = ((score - 1) / 4) * scale_width
+    return position
+
+
+def generate_scorecard_scale(score, min_val, max_val, scale_width=8):
+    """
+    Generate TikZ code for a scorecard scale with a positioned circle
+    """
+    position = score_to_position(score, scale_width)
+    
+    tikz_code = r'''\begin{tikzpicture}[scale=0.9]
+% Draw the gray bar
+\fill[lightgray] (0,0) rectangle (''' + str(scale_width) + r''',0.6);
+% Draw scale endpoints
+\draw[thick] (0,0) -- (0,0.6);
+\draw[thick] (''' + str(scale_width) + r''',0) -- (''' + str(scale_width) + r''',0.6);
+% Draw center mark
+\draw[thick] (''' + str(scale_width/2) + r''',0) -- (''' + str(scale_width/2) + r''',0.6);
+% Draw the circle at the score position
+\fill[primarypurple] (''' + str(position) + r''',0.3) circle (0.25);
+% Labels
+\node[anchor=north,font=\small] at (0,-0.2) {''' + format_currency(min_val) + r'''};
+\node[anchor=north,font=\small] at (''' + str(scale_width/2) + r''',-0.2) {0};
+\node[anchor=north,font=\small] at (''' + str(scale_width) + r''',-0.2) {''' + format_currency(max_val) + r'''};
+\end{tikzpicture}'''
+    
+    return tikz_code
+
+
+def validate_json_structure(data):
+    """Validate the JSON structure has all required fields"""
+    required_fields = {
+        'company': ['name', 'naics_code', 'report_date'],
+        'valuation': ['mpsp', 'revenue_multiple', 'sde_multiple', 'adj_ebitda_multiple', 
+                     'weighted_avg_revenue', 'weighted_avg_sde'],
+        'financial_data': ['years', 'revenue', 'cost_of_goods', 'gross_profit', 
+                          'total_expenses', 'net_income', 'other_income'],
+        'normalizations': ['years', 'amortization', 'interest_capital_lease', 
+                          'management_salary', 'total_adjustments', 'sde', 
+                          'manager_salary', 'adj_ebitda', 'year_weighting'],
+        'industry_benchmarks': ['sample_size', 'cost_of_goods_avg', 'total_expenses_avg',
+                               'total_employment_costs_avg', 'your_cost_of_goods',
+                               'your_total_expenses', 'your_employment_costs'],
+        'scorecard': ['minimum_valuation', 'optimized_valuation', 'sections'],
+        'comparable_transactions': ['count', 'revenue_range', 'transactions']
+    }
+    
+    errors = []
+    
+    for section, fields in required_fields.items():
+        if section not in data:
+            errors.append(f"Missing required section: {section}")
+            continue
+        
+        for field in fields:
+            if field not in data[section]:
+                errors.append(f"Missing required field: {section}.{field}")
+    
+    # Validate scorecard sections
+    required_sections = ['finance_operations', 'owner_dependency', 'growth_potential',
+                        'recurring_revenues', 'organizational_stability', 'sales_marketing']
+    
+    if 'scorecard' in data and 'sections' in data['scorecard']:
+        for section in required_sections:
+            if section not in data['scorecard']['sections']:
+                errors.append(f"Missing scorecard section: {section}")
+            else:
+                section_data = data['scorecard']['sections'][section]
+                if 'weight' not in section_data:
+                    errors.append(f"Missing weight in scorecard section: {section}")
+                if 'questions' not in section_data:
+                    errors.append(f"Missing questions in scorecard section: {section}")
+                if 'scores' not in section_data:
+                    errors.append(f"Missing scores in scorecard section: {section}")
+    
+    return errors
+
+
 def generate_latex(data):
     """Generate complete LaTeX document from data"""
     
-    # Extract commonly used values
-    company_name = escape_latex(data['company']['name'])
-    report_date = data['company']['report_date']
-    mpsp = data['valuation']['mpsp']
-    naics = data['company']['naics_code']
+    # Validate data structure
+    errors = validate_json_structure(data)
+    if errors:
+        print("WARNING: JSON structure validation failed:")
+        for error in errors:
+            print(f"  - {error}")
+        print("\nContinuing with available data, but report may be incomplete...\n")
+    
+    # Extract commonly used values with safe defaults
+    company_name = escape_latex(data.get('company', {}).get('name', 'Unknown Company'))
+    report_date = data.get('company', {}).get('report_date', 'Unknown Date')
+    mpsp = data.get('valuation', {}).get('mpsp', 0)
+    naics = data.get('company', {}).get('naics_code', 'Unknown')
     
     # Calculate scorecard ranges
-    min_val = data['scorecard']['minimum_valuation']
-    max_val = data['scorecard']['optimized_valuation']
+    min_val = data.get('scorecard', {}).get('minimum_valuation', int(mpsp * 0.75))
+    max_val = data.get('scorecard', {}).get('optimized_valuation', int(mpsp * 1.25))
     
     # Calculate section ranges
     sections_range = {}
-    for section_name, section_data in data['scorecard']['sections'].items():
-        weight = section_data['weight']
+    for section_name, section_data in data.get('scorecard', {}).get('sections', {}).items():
+        weight = section_data.get('weight', 0)
         range_amount = int(mpsp * weight / 100)
         sections_range[section_name] = range_amount
     
@@ -248,7 +355,7 @@ Based on the information provided, the report has determined the Most Probable S
 
 \subsection*{Valuation Multiples}
 
-This price was determined using a market-based approach which examined ''' + str(data['comparable_transactions']['count']) + r''' comparable transactions. These transactions included businesses with revenues between ''' + format_currency(data['comparable_transactions']['revenue_range'][0]) + r''' and ''' + format_currency(data['comparable_transactions']['revenue_range'][1]) + r'''. An asking price of ''' + format_currency(mpsp) + r''' represents the following valuation multiples:
+This price was determined using a market-based approach which examined ''' + str(data.get('comparable_transactions', {}).get('count', 0)) + r''' comparable transactions. These transactions included businesses with revenues between ''' + format_currency(data.get('comparable_transactions', {}).get('revenue_range', [0, 0])[0]) + r''' and ''' + format_currency(data.get('comparable_transactions', {}).get('revenue_range', [0, 0])[1]) + r'''. An asking price of ''' + format_currency(mpsp) + r''' represents the following valuation multiples:
 \end{minipage}%
 \hfill
 \begin{minipage}[t]{0.4\textwidth}
@@ -260,13 +367,13 @@ This price was determined using a market-based approach which examined ''' + str
 \textcolor{white}{\textbf{Valuation Metric}} & \textcolor{white}{\textbf{Multiple}} \\
 \hline
 \rowcolor{tableodd}
-Revenue & ''' + str(data['valuation']['revenue_multiple']) + r''' \\
+Revenue & ''' + str(data.get('valuation', {}).get('revenue_multiple', 0)) + r''' \\
 \hline
 \rowcolor{white}
-SDE & ''' + str(data['valuation']['sde_multiple']) + r''' \\
+SDE & ''' + str(data.get('valuation', {}).get('sde_multiple', 0)) + r''' \\
 \hline
 \rowcolor{tableodd}
-Adj. EBITDA & ''' + str(data['valuation']['adj_ebitda_multiple']) + r''' \\
+Adj. EBITDA & ''' + str(data.get('valuation', {}).get('adj_ebitda_multiple', 0)) + r''' \\
 \hline
 \end{tabular}
 \end{minipage}
@@ -279,22 +386,34 @@ See Appendix A for comparable transactions.
 '''
 
     # Company Overview Section
-    fin_data = data['financial_data']
-    years = fin_data['years']
+    fin_data = data.get('financial_data', {})
+    years = fin_data.get('years', [''] * 5)
     
     # Calculate gross profit percentages
     gp_pcts = []
     for i in range(len(years)):
-        gp_pct = calculate_gross_profit_percent(fin_data['gross_profit'][i], fin_data['revenue'][i])
-        gp_pcts.append(gp_pct)
+        try:
+            gp_pct = calculate_gross_profit_percent(
+                fin_data.get('gross_profit', [0]*5)[i],
+                fin_data.get('revenue', [0]*5)[i]
+            )
+            gp_pcts.append(gp_pct)
+        except (IndexError, TypeError):
+            gp_pcts.append(0)
     
     # Calculate net income percentages
     ni_pcts = []
     for i in range(len(years)):
-        ni_pct = calculate_net_income_percent(fin_data['net_income'][i], fin_data['revenue'][i])
-        ni_pcts.append(ni_pct)
+        try:
+            ni_pct = calculate_net_income_percent(
+                fin_data.get('net_income', [0]*5)[i],
+                fin_data.get('revenue', [0]*5)[i]
+            )
+            ni_pcts.append(ni_pct)
+        except (IndexError, TypeError):
+            ni_pcts.append(0)
     
-    norm = data['normalizations']
+    norm = data.get('normalizations', {})
     
     latex += r'''\section*{Company Overview}
 \addcontentsline{toc}{section}{Company Overview}
@@ -315,31 +434,31 @@ See Appendix A for comparable transactions.
 \textcolor{white}{} & \textcolor{white}{\textbf{''' + years[4] + r'''}} & \textcolor{white}{\textbf{''' + years[3] + r'''}} & \textcolor{white}{\textbf{''' + years[2] + r'''}} & \textcolor{white}{\textbf{''' + years[1] + r'''}} & \textcolor{white}{\textbf{''' + years[0] + r'''}} \\
 \hline
 \rowcolor{tableodd}
-\textbf{Total Revenue} & ''' + format_currency(fin_data['revenue'][4]) + r''' & ''' + format_currency(fin_data['revenue'][3]) + r''' & ''' + format_currency(fin_data['revenue'][2]) + r''' & ''' + format_currency(fin_data['revenue'][1]) + r''' & ''' + format_currency(fin_data['revenue'][0]) + r''' \\
+\textbf{Total Revenue} & ''' + format_currency(fin_data.get('revenue', [0]*5)[4]) + r''' & ''' + format_currency(fin_data.get('revenue', [0]*5)[3]) + r''' & ''' + format_currency(fin_data.get('revenue', [0]*5)[2]) + r''' & ''' + format_currency(fin_data.get('revenue', [0]*5)[1]) + r''' & ''' + format_currency(fin_data.get('revenue', [0]*5)[0]) + r''' \\
 \hline
 \rowcolor{white}
-\textbf{Total Cost of Goods} & ''' + format_currency(fin_data['cost_of_goods'][4]) + r''' & ''' + format_currency(fin_data['cost_of_goods'][3]) + r''' & ''' + format_currency(fin_data['cost_of_goods'][2]) + r''' & ''' + format_currency(fin_data['cost_of_goods'][1]) + r''' & ''' + format_currency(fin_data['cost_of_goods'][0]) + r''' \\
+\textbf{Total Cost of Goods} & ''' + format_currency(fin_data.get('cost_of_goods', [0]*5)[4]) + r''' & ''' + format_currency(fin_data.get('cost_of_goods', [0]*5)[3]) + r''' & ''' + format_currency(fin_data.get('cost_of_goods', [0]*5)[2]) + r''' & ''' + format_currency(fin_data.get('cost_of_goods', [0]*5)[1]) + r''' & ''' + format_currency(fin_data.get('cost_of_goods', [0]*5)[0]) + r''' \\
 \hline
 \rowcolor{tableodd}
-\textbf{Gross Profit} & ''' + format_currency(fin_data['gross_profit'][4]) + r''' & ''' + format_currency(fin_data['gross_profit'][3]) + r''' & ''' + format_currency(fin_data['gross_profit'][2]) + r''' & ''' + format_currency(fin_data['gross_profit'][1]) + r''' & ''' + format_currency(fin_data['gross_profit'][0]) + r''' \\
+\textbf{Gross Profit} & ''' + format_currency(fin_data.get('gross_profit', [0]*5)[4]) + r''' & ''' + format_currency(fin_data.get('gross_profit', [0]*5)[3]) + r''' & ''' + format_currency(fin_data.get('gross_profit', [0]*5)[2]) + r''' & ''' + format_currency(fin_data.get('gross_profit', [0]*5)[1]) + r''' & ''' + format_currency(fin_data.get('gross_profit', [0]*5)[0]) + r''' \\
 \hline
 \rowcolor{white}
-\textbf{Total Expenses} & ''' + format_currency(fin_data['total_expenses'][4]) + r''' & ''' + format_currency(fin_data['total_expenses'][3]) + r''' & ''' + format_currency(fin_data['total_expenses'][2]) + r''' & ''' + format_currency(fin_data['total_expenses'][1]) + r''' & ''' + format_currency(fin_data['total_expenses'][0]) + r''' \\
+\textbf{Total Expenses} & ''' + format_currency(fin_data.get('total_expenses', [0]*5)[4]) + r''' & ''' + format_currency(fin_data.get('total_expenses', [0]*5)[3]) + r''' & ''' + format_currency(fin_data.get('total_expenses', [0]*5)[2]) + r''' & ''' + format_currency(fin_data.get('total_expenses', [0]*5)[1]) + r''' & ''' + format_currency(fin_data.get('total_expenses', [0]*5)[0]) + r''' \\
 \hline
 \rowcolor{tableodd}
-\textbf{Net Income} & ''' + format_currency(fin_data['net_income'][4]) + r''' & ''' + format_currency(fin_data['net_income'][3]) + r''' & ''' + format_currency(fin_data['net_income'][2]) + r''' & ''' + format_currency(fin_data['net_income'][1]) + r''' & ''' + format_currency(fin_data['net_income'][0]) + r''' \\
+\textbf{Net Income} & ''' + format_currency(fin_data.get('net_income', [0]*5)[4]) + r''' & ''' + format_currency(fin_data.get('net_income', [0]*5)[3]) + r''' & ''' + format_currency(fin_data.get('net_income', [0]*5)[2]) + r''' & ''' + format_currency(fin_data.get('net_income', [0]*5)[1]) + r''' & ''' + format_currency(fin_data.get('net_income', [0]*5)[0]) + r''' \\
 \hline
 \rowcolor{white}
-\textbf{Total Normalizations} & ''' + format_currency(norm['total_adjustments'][4]) + r''' & ''' + format_currency(norm['total_adjustments'][3]) + r''' & ''' + format_currency(norm['total_adjustments'][2]) + r''' & ''' + format_currency(norm['total_adjustments'][1]) + r''' & ''' + format_currency(norm['total_adjustments'][0]) + r''' \\
+\textbf{Total Normalizations} & ''' + format_currency(norm.get('total_adjustments', [0]*5)[4]) + r''' & ''' + format_currency(norm.get('total_adjustments', [0]*5)[3]) + r''' & ''' + format_currency(norm.get('total_adjustments', [0]*5)[2]) + r''' & ''' + format_currency(norm.get('total_adjustments', [0]*5)[1]) + r''' & ''' + format_currency(norm.get('total_adjustments', [0]*5)[0]) + r''' \\
 \hline
 \rowcolor{tableodd}
-\textbf{SDE} & ''' + format_currency(norm['sde'][4]) + r''' & ''' + format_currency(norm['sde'][3]) + r''' & ''' + format_currency(norm['sde'][2]) + r''' & ''' + format_currency(norm['sde'][1]) + r''' & ''' + format_currency(norm['sde'][0]) + r''' \\
+\textbf{SDE} & ''' + format_currency(norm.get('sde', [0]*5)[4]) + r''' & ''' + format_currency(norm.get('sde', [0]*5)[3]) + r''' & ''' + format_currency(norm.get('sde', [0]*5)[2]) + r''' & ''' + format_currency(norm.get('sde', [0]*5)[1]) + r''' & ''' + format_currency(norm.get('sde', [0]*5)[0]) + r''' \\
 \hline
 \rowcolor{white}
-\textbf{Adj. EBITDA} & ''' + format_currency(norm['adj_ebitda'][4]) + r''' & ''' + format_currency(norm['adj_ebitda'][3]) + r''' & ''' + format_currency(norm['adj_ebitda'][2]) + r''' & ''' + format_currency(norm['adj_ebitda'][1]) + r''' & ''' + format_currency(norm['adj_ebitda'][0]) + r''' \\
+\textbf{Adj. EBITDA} & ''' + format_currency(norm.get('adj_ebitda', [0]*5)[4]) + r''' & ''' + format_currency(norm.get('adj_ebitda', [0]*5)[3]) + r''' & ''' + format_currency(norm.get('adj_ebitda', [0]*5)[2]) + r''' & ''' + format_currency(norm.get('adj_ebitda', [0]*5)[1]) + r''' & ''' + format_currency(norm.get('adj_ebitda', [0]*5)[0]) + r''' \\
 \hline
 \rowcolor{tableodd}
-\textbf{Year Weighting} & ''' + str(norm['year_weighting'][4]) + r'''\% & ''' + str(norm['year_weighting'][3]) + r'''\% & ''' + str(norm['year_weighting'][2]) + r'''\% & ''' + str(norm['year_weighting'][1]) + r'''\% & ''' + str(norm['year_weighting'][0]) + r'''\% \\
+\textbf{Year Weighting} & ''' + str(norm.get('year_weighting', [0]*5)[4]) + r'''\% & ''' + str(norm.get('year_weighting', [0]*5)[3]) + r'''\% & ''' + str(norm.get('year_weighting', [0]*5)[2]) + r'''\% & ''' + str(norm.get('year_weighting', [0]*5)[1]) + r'''\% & ''' + str(norm.get('year_weighting', [0]*5)[0]) + r'''\% \\
 \hline
 \end{tabular}
 \end{center}
@@ -347,10 +466,10 @@ See Appendix A for comparable transactions.
 \vspace{0.5cm}
 
 \begin{tabular}{ll}
-\textbf{Weighted Average of Revenue} & ''' + format_currency(data['valuation']['weighted_avg_revenue']) + r''' \\
-\textbf{MPSP Multiple of Revenue} & ''' + str(data['valuation']['revenue_multiple']) + r''' \\
-\textbf{Weighted Average of SDE} & ''' + format_currency(data['valuation']['weighted_avg_sde']) + r''' \\
-\textbf{MPSP Multiple of SDE} & ''' + str(data['valuation']['sde_multiple']) + r''' \\
+\textbf{Weighted Average of Revenue} & ''' + format_currency(data.get('valuation', {}).get('weighted_avg_revenue', 0)) + r''' \\
+\textbf{MPSP Multiple of Revenue} & ''' + str(data.get('valuation', {}).get('revenue_multiple', 0)) + r''' \\
+\textbf{Weighted Average of SDE} & ''' + format_currency(data.get('valuation', {}).get('weighted_avg_sde', 0)) + r''' \\
+\textbf{MPSP Multiple of SDE} & ''' + str(data.get('valuation', {}).get('sde_multiple', 0)) + r''' \\
 \end{tabular}
 
 \vspace{0.3cm}
@@ -454,21 +573,21 @@ This report uses your answers to more accurately position your business on the c
 \multicolumn{6}{|l|}{\textbf{Revenue}} \\
 \hline
 \rowcolor{tableodd}
-Revenue & ''' + format_currency(fin_data['revenue'][4]) + r''' & ''' + format_currency(fin_data['revenue'][3]) + r''' & ''' + format_currency(fin_data['revenue'][2]) + r''' & ''' + format_currency(fin_data['revenue'][1]) + r''' & ''' + format_currency(fin_data['revenue'][0]) + r''' \\
+Revenue & ''' + format_currency(fin_data.get('revenue', [0]*5)[4]) + r''' & ''' + format_currency(fin_data.get('revenue', [0]*5)[3]) + r''' & ''' + format_currency(fin_data.get('revenue', [0]*5)[2]) + r''' & ''' + format_currency(fin_data.get('revenue', [0]*5)[1]) + r''' & ''' + format_currency(fin_data.get('revenue', [0]*5)[0]) + r''' \\
 \hline
 \rowcolor{white}
-\textbf{Total Revenue} & ''' + format_currency(fin_data['revenue'][4]) + r''' & ''' + format_currency(fin_data['revenue'][3]) + r''' & ''' + format_currency(fin_data['revenue'][2]) + r''' & ''' + format_currency(fin_data['revenue'][1]) + r''' & ''' + format_currency(fin_data['revenue'][0]) + r''' \\
+\textbf{Total Revenue} & ''' + format_currency(fin_data.get('revenue', [0]*5)[4]) + r''' & ''' + format_currency(fin_data.get('revenue', [0]*5)[3]) + r''' & ''' + format_currency(fin_data.get('revenue', [0]*5)[2]) + r''' & ''' + format_currency(fin_data.get('revenue', [0]*5)[1]) + r''' & ''' + format_currency(fin_data.get('revenue', [0]*5)[0]) + r''' \\
 \hline
 \multicolumn{6}{|l|}{\textbf{Cost of Goods}} \\
 \hline
 \rowcolor{tableodd}
-Cost of Sales & ''' + format_currency(fin_data['cost_of_goods'][4]) + r''' & ''' + format_currency(fin_data['cost_of_goods'][3]) + r''' & ''' + format_currency(fin_data['cost_of_goods'][2]) + r''' & ''' + format_currency(fin_data['cost_of_goods'][1]) + r''' & ''' + format_currency(fin_data['cost_of_goods'][0]) + r''' \\
+Cost of Sales & ''' + format_currency(fin_data.get('cost_of_goods', [0]*5)[4]) + r''' & ''' + format_currency(fin_data.get('cost_of_goods', [0]*5)[3]) + r''' & ''' + format_currency(fin_data.get('cost_of_goods', [0]*5)[2]) + r''' & ''' + format_currency(fin_data.get('cost_of_goods', [0]*5)[1]) + r''' & ''' + format_currency(fin_data.get('cost_of_goods', [0]*5)[0]) + r''' \\
 \hline
 \rowcolor{white}
-\textbf{Total Cost of Goods} & ''' + format_currency(fin_data['cost_of_goods'][4]) + r''' & ''' + format_currency(fin_data['cost_of_goods'][3]) + r''' & ''' + format_currency(fin_data['cost_of_goods'][2]) + r''' & ''' + format_currency(fin_data['cost_of_goods'][1]) + r''' & ''' + format_currency(fin_data['cost_of_goods'][0]) + r''' \\
+\textbf{Total Cost of Goods} & ''' + format_currency(fin_data.get('cost_of_goods', [0]*5)[4]) + r''' & ''' + format_currency(fin_data.get('cost_of_goods', [0]*5)[3]) + r''' & ''' + format_currency(fin_data.get('cost_of_goods', [0]*5)[2]) + r''' & ''' + format_currency(fin_data.get('cost_of_goods', [0]*5)[1]) + r''' & ''' + format_currency(fin_data.get('cost_of_goods', [0]*5)[0]) + r''' \\
 \hline
 \rowcolor{tableodd}
-\textbf{Gross Profit} & ''' + format_currency(fin_data['gross_profit'][4]) + r''' & ''' + format_currency(fin_data['gross_profit'][3]) + r''' & ''' + format_currency(fin_data['gross_profit'][2]) + r''' & ''' + format_currency(fin_data['gross_profit'][1]) + r''' & ''' + format_currency(fin_data['gross_profit'][0]) + r''' \\
+\textbf{Gross Profit} & ''' + format_currency(fin_data.get('gross_profit', [0]*5)[4]) + r''' & ''' + format_currency(fin_data.get('gross_profit', [0]*5)[3]) + r''' & ''' + format_currency(fin_data.get('gross_profit', [0]*5)[2]) + r''' & ''' + format_currency(fin_data.get('gross_profit', [0]*5)[1]) + r''' & ''' + format_currency(fin_data.get('gross_profit', [0]*5)[0]) + r''' \\
 \hline
 \rowcolor{white}
 \textbf{Gross Profit \%} & ''' + format_percent(gp_pcts[4]) + r''' & ''' + format_percent(gp_pcts[3]) + r''' & ''' + format_percent(gp_pcts[2]) + r''' & ''' + format_percent(gp_pcts[1]) + r''' & ''' + format_percent(gp_pcts[0]) + r''' \\
@@ -476,18 +595,18 @@ Cost of Sales & ''' + format_currency(fin_data['cost_of_goods'][4]) + r''' & '''
 \multicolumn{6}{|l|}{\textbf{Expenses}} \\
 \hline
 \rowcolor{tableodd}
-General Expense & ''' + format_currency(fin_data['total_expenses'][4]) + r''' & ''' + format_currency(fin_data['total_expenses'][3]) + r''' & ''' + format_currency(fin_data['total_expenses'][2]) + r''' & ''' + format_currency(fin_data['total_expenses'][1]) + r''' & ''' + format_currency(fin_data['total_expenses'][0]) + r''' \\
+General Expense & ''' + format_currency(fin_data.get('total_expenses', [0]*5)[4]) + r''' & ''' + format_currency(fin_data.get('total_expenses', [0]*5)[3]) + r''' & ''' + format_currency(fin_data.get('total_expenses', [0]*5)[2]) + r''' & ''' + format_currency(fin_data.get('total_expenses', [0]*5)[1]) + r''' & ''' + format_currency(fin_data.get('total_expenses', [0]*5)[0]) + r''' \\
 \hline
 \rowcolor{white}
-\textbf{Total Expenses} & ''' + format_currency(fin_data['total_expenses'][4]) + r''' & ''' + format_currency(fin_data['total_expenses'][3]) + r''' & ''' + format_currency(fin_data['total_expenses'][2]) + r''' & ''' + format_currency(fin_data['total_expenses'][1]) + r''' & ''' + format_currency(fin_data['total_expenses'][0]) + r''' \\
+\textbf{Total Expenses} & ''' + format_currency(fin_data.get('total_expenses', [0]*5)[4]) + r''' & ''' + format_currency(fin_data.get('total_expenses', [0]*5)[3]) + r''' & ''' + format_currency(fin_data.get('total_expenses', [0]*5)[2]) + r''' & ''' + format_currency(fin_data.get('total_expenses', [0]*5)[1]) + r''' & ''' + format_currency(fin_data.get('total_expenses', [0]*5)[0]) + r''' \\
 \hline
 \multicolumn{6}{|l|}{\textbf{Other Income}} \\
 \hline
 \rowcolor{tableodd}
-- & \$- & \$- & ''' + format_currency(fin_data['other_income'][2]) + r''' & \$- & \$- \\
+- & ''' + (format_currency(fin_data.get('other_income', [0]*5)[4]) if fin_data.get('other_income', [0]*5)[4] > 0 else '\\$-') + r''' & ''' + (format_currency(fin_data.get('other_income', [0]*5)[3]) if fin_data.get('other_income', [0]*5)[3] > 0 else '\\$-') + r''' & ''' + (format_currency(fin_data.get('other_income', [0]*5)[2]) if fin_data.get('other_income', [0]*5)[2] > 0 else '\\$-') + r''' & ''' + (format_currency(fin_data.get('other_income', [0]*5)[1]) if fin_data.get('other_income', [0]*5)[1] > 0 else '\\$-') + r''' & ''' + (format_currency(fin_data.get('other_income', [0]*5)[0]) if fin_data.get('other_income', [0]*5)[0] > 0 else '\\$-') + r''' \\
 \hline
 \rowcolor{white}
-\textbf{Net Income} & ''' + format_currency(fin_data['net_income'][4]) + r''' & ''' + format_currency(fin_data['net_income'][3]) + r''' & ''' + format_currency(fin_data['net_income'][2]) + r''' & ''' + format_currency(fin_data['net_income'][1]) + r''' & ''' + format_currency(fin_data['net_income'][0]) + r''' \\
+\textbf{Net Income} & ''' + format_currency(fin_data.get('net_income', [0]*5)[4]) + r''' & ''' + format_currency(fin_data.get('net_income', [0]*5)[3]) + r''' & ''' + format_currency(fin_data.get('net_income', [0]*5)[2]) + r''' & ''' + format_currency(fin_data.get('net_income', [0]*5)[1]) + r''' & ''' + format_currency(fin_data.get('net_income', [0]*5)[0]) + r''' \\
 \hline
 \rowcolor{tableodd}
 \textbf{Net Income \%} & ''' + format_percent(ni_pcts[4]) + r''' & ''' + format_percent(ni_pcts[3]) + r''' & ''' + format_percent(ni_pcts[2]) + r''' & ''' + format_percent(ni_pcts[1]) + r''' & ''' + format_percent(ni_pcts[0]) + r''' \\
@@ -514,34 +633,34 @@ General Expense & ''' + format_currency(fin_data['total_expenses'][4]) + r''' & 
 \textcolor{white}{} & \textcolor{white}{\textbf{''' + years[4] + r'''}} & \textcolor{white}{\textbf{''' + years[3] + r'''}} & \textcolor{white}{\textbf{''' + years[2] + r'''}} & \textcolor{white}{\textbf{''' + years[1] + r'''}} & \textcolor{white}{\textbf{''' + years[0] + r'''}} & \textcolor{white}{\textbf{Notes}} \\
 \hline
 \rowcolor{tableodd}
-Net Income & ''' + format_currency(fin_data['net_income'][4]) + r''' & ''' + format_currency(fin_data['net_income'][3]) + r''' & ''' + format_currency(fin_data['net_income'][2]) + r''' & ''' + format_currency(fin_data['net_income'][1]) + r''' & ''' + format_currency(fin_data['net_income'][0]) + r''' & \\
+Net Income & ''' + format_currency(fin_data.get('net_income', [0]*5)[4]) + r''' & ''' + format_currency(fin_data.get('net_income', [0]*5)[3]) + r''' & ''' + format_currency(fin_data.get('net_income', [0]*5)[2]) + r''' & ''' + format_currency(fin_data.get('net_income', [0]*5)[1]) + r''' & ''' + format_currency(fin_data.get('net_income', [0]*5)[0]) + r''' & \\
 \hline
 \rowcolor{white}
-Discretionary Expense & \$- & \$- & \$- & \$- & \$- & \\
+Discretionary Expense & ''' + format_currency(norm.get('discretionary_expense', [0]*5)[4]) + r''' & ''' + format_currency(norm.get('discretionary_expense', [0]*5)[3]) + r''' & ''' + format_currency(norm.get('discretionary_expense', [0]*5)[2]) + r''' & ''' + format_currency(norm.get('discretionary_expense', [0]*5)[1]) + r''' & ''' + format_currency(norm.get('discretionary_expense', [0]*5)[0]) + r''' & \\
 \hline
 \rowcolor{tableodd}
-Amortization & ''' + format_currency(norm['amortization'][4]) + r''' & ''' + format_currency(norm['amortization'][3]) + r''' & ''' + format_currency(norm['amortization'][2]) + r''' & ''' + format_currency(norm['amortization'][1]) + r''' & ''' + format_currency(norm['amortization'][0]) + r''' & \\
+Amortization & ''' + format_currency(norm.get('amortization', [0]*5)[4]) + r''' & ''' + format_currency(norm.get('amortization', [0]*5)[3]) + r''' & ''' + format_currency(norm.get('amortization', [0]*5)[2]) + r''' & ''' + format_currency(norm.get('amortization', [0]*5)[1]) + r''' & ''' + format_currency(norm.get('amortization', [0]*5)[0]) + r''' & \\
 \hline
 \rowcolor{white}
-Interest on Equipment & ''' + format_currency(norm['interest_capital_lease'][4]) + r''' & ''' + format_currency(norm['interest_capital_lease'][3]) + r''' & ''' + format_currency(norm['interest_capital_lease'][2]) + r''' & ''' + format_currency(norm['interest_capital_lease'][1]) + r''' & ''' + format_currency(norm['interest_capital_lease'][0]) + r''' & \\
+Interest on Equipment & ''' + format_currency(norm.get('interest_capital_lease', [0]*5)[4]) + r''' & ''' + format_currency(norm.get('interest_capital_lease', [0]*5)[3]) + r''' & ''' + format_currency(norm.get('interest_capital_lease', [0]*5)[2]) + r''' & ''' + format_currency(norm.get('interest_capital_lease', [0]*5)[1]) + r''' & ''' + format_currency(norm.get('interest_capital_lease', [0]*5)[0]) + r''' & \\
 \hline
 \rowcolor{tableodd}
-Management Salary & ''' + format_currency(norm['management_salary'][4]) + r''' & ''' + format_currency(norm['management_salary'][3]) + r''' & ''' + format_currency(norm['management_salary'][2]) + r''' & ''' + format_currency(norm['management_salary'][1]) + r''' & ''' + format_currency(norm['management_salary'][0]) + r''' & \\
+Management Salary & ''' + format_currency(norm.get('management_salary', [0]*5)[4]) + r''' & ''' + format_currency(norm.get('management_salary', [0]*5)[3]) + r''' & ''' + format_currency(norm.get('management_salary', [0]*5)[2]) + r''' & ''' + format_currency(norm.get('management_salary', [0]*5)[1]) + r''' & ''' + format_currency(norm.get('management_salary', [0]*5)[0]) + r''' & \\
 \hline
 \rowcolor{white}
-\textbf{Total Adjustments} & ''' + format_currency(norm['total_adjustments'][4]) + r''' & ''' + format_currency(norm['total_adjustments'][3]) + r''' & ''' + format_currency(norm['total_adjustments'][2]) + r''' & ''' + format_currency(norm['total_adjustments'][1]) + r''' & ''' + format_currency(norm['total_adjustments'][0]) + r''' & \\
+\textbf{Total Adjustments} & ''' + format_currency(norm.get('total_adjustments', [0]*5)[4]) + r''' & ''' + format_currency(norm.get('total_adjustments', [0]*5)[3]) + r''' & ''' + format_currency(norm.get('total_adjustments', [0]*5)[2]) + r''' & ''' + format_currency(norm.get('total_adjustments', [0]*5)[1]) + r''' & ''' + format_currency(norm.get('total_adjustments', [0]*5)[0]) + r''' & \\
 \hline
 \rowcolor{tableodd}
-\textbf{SDE} & ''' + format_currency(norm['sde'][4]) + r''' & ''' + format_currency(norm['sde'][3]) + r''' & ''' + format_currency(norm['sde'][2]) + r''' & ''' + format_currency(norm['sde'][1]) + r''' & ''' + format_currency(norm['sde'][0]) + r''' & \\
+\textbf{SDE} & ''' + format_currency(norm.get('sde', [0]*5)[4]) + r''' & ''' + format_currency(norm.get('sde', [0]*5)[3]) + r''' & ''' + format_currency(norm.get('sde', [0]*5)[2]) + r''' & ''' + format_currency(norm.get('sde', [0]*5)[1]) + r''' & ''' + format_currency(norm.get('sde', [0]*5)[0]) + r''' & \\
 \hline
 \rowcolor{white}
-Replace owner & ''' + format_currency(norm['manager_salary'][4]) + r''' & ''' + format_currency(norm['manager_salary'][3]) + r''' & ''' + format_currency(norm['manager_salary'][2]) + r''' & ''' + format_currency(norm['manager_salary'][1]) + r''' & ''' + format_currency(norm['manager_salary'][0]) + r''' & \\
+Replace owner & ''' + format_currency(norm.get('manager_salary', [0]*5)[4]) + r''' & ''' + format_currency(norm.get('manager_salary', [0]*5)[3]) + r''' & ''' + format_currency(norm.get('manager_salary', [0]*5)[2]) + r''' & ''' + format_currency(norm.get('manager_salary', [0]*5)[1]) + r''' & ''' + format_currency(norm.get('manager_salary', [0]*5)[0]) + r''' & \\
 \hline
 \rowcolor{tableodd}
-\textbf{Adjusted EBITDA} & ''' + format_currency(norm['adj_ebitda'][4]) + r''' & ''' + format_currency(norm['adj_ebitda'][3]) + r''' & ''' + format_currency(norm['adj_ebitda'][2]) + r''' & ''' + format_currency(norm['adj_ebitda'][1]) + r''' & ''' + format_currency(norm['adj_ebitda'][0]) + r''' & \\
+\textbf{Adjusted EBITDA} & ''' + format_currency(norm.get('adj_ebitda', [0]*5)[4]) + r''' & ''' + format_currency(norm.get('adj_ebitda', [0]*5)[3]) + r''' & ''' + format_currency(norm.get('adj_ebitda', [0]*5)[2]) + r''' & ''' + format_currency(norm.get('adj_ebitda', [0]*5)[1]) + r''' & ''' + format_currency(norm.get('adj_ebitda', [0]*5)[0]) + r''' & \\
 \hline
 \rowcolor{white}
-\textbf{Year Weighting} & ''' + str(norm['year_weighting'][4]) + r'''\% & ''' + str(norm['year_weighting'][3]) + r'''\% & ''' + str(norm['year_weighting'][2]) + r'''\% & ''' + str(norm['year_weighting'][1]) + r'''\% & ''' + str(norm['year_weighting'][0]) + r'''\% & \\
+\textbf{Year Weighting} & ''' + str(norm.get('year_weighting', [0]*5)[4]) + r'''\% & ''' + str(norm.get('year_weighting', [0]*5)[3]) + r'''\% & ''' + str(norm.get('year_weighting', [0]*5)[2]) + r'''\% & ''' + str(norm.get('year_weighting', [0]*5)[1]) + r'''\% & ''' + str(norm.get('year_weighting', [0]*5)[0]) + r'''\% & \\
 \hline
 \end{tabular}
 \end{center}
@@ -581,11 +700,11 @@ Therefore, we use Seller's Discretionary Earnings (SDE) as a better way to show 
 '''
 
     # Industry Benchmarks
-    bench = data['industry_benchmarks']
+    bench = data.get('industry_benchmarks', {})
     latex += r'''\section*{Industry Benchmarks}
 \addcontentsline{toc}{section}{Industry Benchmarks}
 
-The table below compares your financial performance to ''' + f"{bench['sample_size']:,}" + r''' other businesses in your industry using data from Statistics Canada. Benchmarking data is created using a sample of Revenue Canada tax returns for incorporated businesses operating in Canada. To start increasing your valuation, focus on areas labelled `Improvement Opportunity' in the analysis column.
+The table below compares your financial performance to ''' + f"{bench.get('sample_size', 0):,}" + r''' other businesses in your industry using data from Statistics Canada. Benchmarking data is created using a sample of Revenue Canada tax returns for incorporated businesses operating in Canada. To start increasing your valuation, focus on areas labelled `Improvement Opportunity' in the analysis column.
 
 \vspace{0.5cm}
 
@@ -596,10 +715,10 @@ The table below compares your financial performance to ''' + f"{bench['sample_si
 \textcolor{white}{} & \textcolor{white}{\textbf{Your Average}} & \textcolor{white}{\textbf{Industry Average}} & \textcolor{white}{\textbf{Analysis}} \\
 \hline
 \rowcolor{tableodd}
-Cost of Goods & ''' + format_percent(bench['your_cost_of_goods']) + r''' & ''' + format_percent(bench['cost_of_goods_avg']) + r''' & Good \\
+Cost of Goods & ''' + format_percent(bench.get('your_cost_of_goods', 0)) + r''' & ''' + format_percent(bench.get('cost_of_goods_avg', 0)) + r''' & Good \\
 \hline
 \rowcolor{white}
-Total Expenses & ''' + format_percent(bench['your_total_expenses']) + r''' & ''' + format_percent(bench['total_expenses_avg']) + r''' & Good \\
+Total Expenses & ''' + format_percent(bench.get('your_total_expenses', 0)) + r''' & ''' + format_percent(bench.get('total_expenses_avg', 0)) + r''' & Good \\
 \hline
 \end{tabular}
 \end{center}
@@ -610,7 +729,7 @@ Total Expenses & ''' + format_percent(bench['your_total_expenses']) + r''' & '''
 
 \vspace{0.3cm}
 
-On average, total employment costs in your industry are ''' + format_percent(bench['total_employment_costs_avg']) + r''' of revenue. In comparison, your total employment costs are ''' + format_percent(bench['your_employment_costs']) + r'''.
+On average, total employment costs in your industry are ''' + format_percent(bench.get('total_employment_costs_avg', 0)) + r''' of revenue. In comparison, your total employment costs are ''' + format_percent(bench.get('your_employment_costs', 0)) + r'''.
 
 \clearpage
 '''
@@ -651,18 +770,21 @@ The following tables break down the qualitative analysis of ''' + company_name +
 '''
 
     # Finance and Operations Section
-    fin_ops = data['scorecard']['sections']['finance_operations']
-    fin_ops_range = sections_range['finance_operations']
+    sections = data.get('scorecard', {}).get('sections', {})
+    fin_ops = sections.get('finance_operations', {})
+    fin_ops_range = sections_range.get('finance_operations', 0)
+    fin_ops_score = fin_ops.get('scores', {}).get('average', 3)
     
     # Escape answers for LaTeX
+    fin_ops_questions = fin_ops.get('questions', {})
     fin_ops_answers = {
-        'documented_processes': escape_latex(fin_ops['questions']['documented_processes']),
-        'accountant': escape_latex(fin_ops['questions']['accountant']),
-        'annual_budget': escape_latex(fin_ops['questions']['annual_budget']),
-        'payables_on_time': escape_latex(fin_ops['questions']['payables_on_time'])
+        'documented_processes': escape_latex(fin_ops_questions.get('documented_processes', '')),
+        'accountant': escape_latex(fin_ops_questions.get('accountant', '')),
+        'annual_budget': escape_latex(fin_ops_questions.get('annual_budget', '')),
+        'payables_on_time': escape_latex(fin_ops_questions.get('payables_on_time', ''))
     }
     
-    latex += r'''\subsection*{Finance and General Operations +/- ''' + str(fin_ops['weight']) + r'''\% of valuation}
+    latex += r'''\subsection*{Finance and General Operations +/- ''' + str(fin_ops.get('weight', 0)) + r'''\% of valuation}
 
 \begin{center}
 \small
@@ -689,21 +811,7 @@ Are your payables always paid in full and on-time? & ''' + fin_ops_answers['paya
 \vspace{0.5cm}
 
 \begin{center}
-\begin{tikzpicture}[scale=0.9]
-% Draw the gray bar
-\fill[lightgray] (0,0) rectangle (8,0.6);
-% Draw scale endpoints
-\draw[thick] (0,0) -- (0,0.6);
-\draw[thick] (8,0) -- (8,0.6);
-% Draw center mark
-\draw[thick] (4,0) -- (4,0.6);
-% Draw the dot at center
-\fill[primarypurple] (4,0.3) circle (0.25);
-% Labels
-\node[anchor=north,font=\small] at (0,-0.2) {''' + format_currency(-fin_ops_range) + r'''};
-\node[anchor=north,font=\small] at (4,-0.2) {0};
-\node[anchor=north,font=\small] at (8,-0.2) {''' + format_currency(fin_ops_range) + r'''};
-\end{tikzpicture}
+''' + generate_scorecard_scale(fin_ops_score, -fin_ops_range, fin_ops_range) + r'''
 \end{center}
 
 It is very difficult for a potential buyer to assess, and ultimately purchase, a business without being able to review accurate financial statements. To increase your score in this area:
@@ -719,16 +827,18 @@ It is very difficult for a potential buyer to assess, and ultimately purchase, a
 '''
 
     # Owner Dependency
-    owner_dep = data['scorecard']['sections']['owner_dependency']
-    owner_dep_range = sections_range['owner_dependency']
+    owner_dep = sections.get('owner_dependency', {})
+    owner_dep_range = sections_range.get('owner_dependency', 0)
+    owner_dep_score = owner_dep.get('scores', {}).get('average', 3)
     
+    owner_dep_questions = owner_dep.get('questions', {})
     owner_dep_answers = {
-        'thrive_without_owner': escape_latex(owner_dep['questions']['thrive_without_owner']),
-        'vacation_over_month': escape_latex(owner_dep['questions']['vacation_over_month']),
-        'customers_ask_by_name_pct': escape_latex(str(owner_dep['questions']['customers_ask_by_name_pct']))
+        'thrive_without_owner': escape_latex(owner_dep_questions.get('thrive_without_owner', '')),
+        'vacation_over_month': escape_latex(owner_dep_questions.get('vacation_over_month', '')),
+        'customers_ask_by_name_pct': escape_latex(str(owner_dep_questions.get('customers_ask_by_name_pct', '')))
     }
     
-    latex += r'''\subsection*{Owner Dependency +/- ''' + str(owner_dep['weight']) + r'''\% of valuation}
+    latex += r'''\subsection*{Owner Dependency +/- ''' + str(owner_dep.get('weight', 0)) + r'''\% of valuation}
 
 \begin{center}
 \small
@@ -752,21 +862,7 @@ On a normal day, what percentage of customers ask for you by name? & ''' + owner
 \vspace{0.5cm}
 
 \begin{center}
-\begin{tikzpicture}[scale=0.9]
-% Draw the gray bar
-\fill[lightgray] (0,0) rectangle (8,0.6);
-% Draw scale endpoints
-\draw[thick] (0,0) -- (0,0.6);
-\draw[thick] (8,0) -- (8,0.6);
-% Draw center mark
-\draw[thick] (4,0) -- (4,0.6);
-% Draw the dot at center
-\fill[primarypurple] (4,0.3) circle (0.25);
-% Labels
-\node[anchor=north,font=\small] at (0,-0.2) {''' + format_currency(-owner_dep_range) + r'''};
-\node[anchor=north,font=\small] at (4,-0.2) {0};
-\node[anchor=north,font=\small] at (8,-0.2) {''' + format_currency(owner_dep_range) + r'''};
-\end{tikzpicture}
+''' + generate_scorecard_scale(owner_dep_score, -owner_dep_range, owner_dep_range) + r'''
 \end{center}
 
 One of the single biggest concerns voiced by business acquirers is the fear that the business will collapse without the founder at the helm. To alleviate that concern, and to increase the value of your business, make every effort to reduce your importance in day-to-day business operations.
@@ -783,15 +879,17 @@ One of the single biggest concerns voiced by business acquirers is the fear that
 '''
 
     # Growth Potential
-    growth = data['scorecard']['sections']['growth_potential']
-    growth_range = sections_range['growth_potential']
+    growth = sections.get('growth_potential', {})
+    growth_range = sections_range.get('growth_potential', 0)
+    growth_score = growth.get('scores', {}).get('average', 3)
     
+    growth_questions = growth.get('questions', {})
     growth_answers = {
-        'identified_opportunities': escape_latex(growth['questions']['identified_opportunities']),
-        'revenue_increase_capacity': escape_latex(str(growth['questions']['revenue_increase_capacity']))
+        'identified_opportunities': escape_latex(growth_questions.get('identified_opportunities', '')),
+        'revenue_increase_capacity': escape_latex(str(growth_questions.get('revenue_increase_capacity', '')))
     }
     
-    latex += r'''\subsection*{Growth Potential +/- ''' + str(growth['weight']) + r'''\% of valuation}
+    latex += r'''\subsection*{Growth Potential +/- ''' + str(growth.get('weight', 0)) + r'''\% of valuation}
 
 \begin{center}
 \small
@@ -812,21 +910,7 @@ In your current space and with your current equipment, by how much could you inc
 \vspace{0.5cm}
 
 \begin{center}
-\begin{tikzpicture}[scale=0.9]
-% Draw the gray bar
-\fill[lightgray] (0,0) rectangle (8,0.6);
-% Draw scale endpoints
-\draw[thick] (0,0) -- (0,0.6);
-\draw[thick] (8,0) -- (8,0.6);
-% Draw center mark
-\draw[thick] (4,0) -- (4,0.6);
-% Draw the dot at center
-\fill[primarypurple] (4,0.3) circle (0.25);
-% Labels
-\node[anchor=north,font=\small] at (0,-0.2) {''' + format_currency(-growth_range) + r'''};
-\node[anchor=north,font=\small] at (4,-0.2) {0};
-\node[anchor=north,font=\small] at (8,-0.2) {''' + format_currency(growth_range) + r'''};
-\end{tikzpicture}
+''' + generate_scorecard_scale(growth_score, -growth_range, growth_range) + r'''
 \end{center}
 
 Growth potential is an organization's future ability to generate larger profits, expand its workforce and increase production. If you have not identified areas of growth in your business, consider:
@@ -847,12 +931,14 @@ Document growth opportunities - even if you don't act on them, a buyer will appr
 '''
 
     # Recurring Revenues
-    recurring = data['scorecard']['sections']['recurring_revenues']
-    recurring_range = sections_range['recurring_revenues']
+    recurring = sections.get('recurring_revenues', {})
+    recurring_range = sections_range.get('recurring_revenues', 0)
+    recurring_score = recurring.get('scores', {}).get('average', 3)
     
-    recurring_answer = escape_latex(recurring['questions']['revenue_model'])
+    recurring_questions = recurring.get('questions', {})
+    recurring_answer = escape_latex(recurring_questions.get('revenue_model', ''))
     
-    latex += r'''\subsection*{Recurring Revenues +/- ''' + str(recurring['weight']) + r'''\% of valuation}
+    latex += r'''\subsection*{Recurring Revenues +/- ''' + str(recurring.get('weight', 0)) + r'''\% of valuation}
 
 \begin{center}
 \small
@@ -870,21 +956,7 @@ Which one of these best describes your revenue model? & ''' + recurring_answer +
 \vspace{0.5cm}
 
 \begin{center}
-\begin{tikzpicture}[scale=0.9]
-% Draw the gray bar
-\fill[lightgray] (0,0) rectangle (8,0.6);
-% Draw scale endpoints
-\draw[thick] (0,0) -- (0,0.6);
-\draw[thick] (8,0) -- (8,0.6);
-% Draw center mark
-\draw[thick] (4,0) -- (4,0.6);
-% Draw the dot at center
-\fill[primarypurple] (4,0.3) circle (0.25);
-% Labels
-\node[anchor=north,font=\small] at (0,-0.2) {''' + format_currency(-recurring_range) + r'''};
-\node[anchor=north,font=\small] at (4,-0.2) {0};
-\node[anchor=north,font=\small] at (8,-0.2) {''' + format_currency(recurring_range) + r'''};
-\end{tikzpicture}
+''' + generate_scorecard_scale(recurring_score, -recurring_range, recurring_range) + r'''
 \end{center}
 
 Buyers love recurring revenues. Recurring revenue is the portion of a company's revenue that is contracted to continue in the future. Unlike one-off sales, these revenues are predictable, stable and can be counted on to occur at regular intervals going forward with a high degree of certainty. Examples include cell phone contracts, magazine subscriptions, and service plans.
@@ -902,18 +974,20 @@ Not all companies can transition their customers to a recurring revenue model, b
 '''
 
     # Organizational Stability
-    org_stab = data['scorecard']['sections']['organizational_stability']
-    org_stab_range = sections_range['organizational_stability']
+    org_stab = sections.get('organizational_stability', {})
+    org_stab_range = sections_range.get('organizational_stability', 0)
+    org_stab_score = org_stab.get('scores', {}).get('average', 3)
     
+    org_stab_questions = org_stab.get('questions', {})
     org_stab_answers = {
-        'largest_customer_pct': escape_latex(org_stab['questions']['largest_customer_pct']),
-        'top_5_customers_pct': escape_latex(str(org_stab['questions']['top_5_customers_pct'])),
-        'replace_sales_person': escape_latex(org_stab['questions']['replace_sales_person']),
-        'replace_delivery_person': escape_latex(org_stab['questions']['replace_delivery_person']),
-        'replace_supplier': escape_latex(org_stab['questions']['replace_supplier'])
+        'largest_customer_pct': escape_latex(org_stab_questions.get('largest_customer_pct', '')),
+        'top_5_customers_pct': escape_latex(str(org_stab_questions.get('top_5_customers_pct', ''))),
+        'replace_sales_person': escape_latex(org_stab_questions.get('replace_sales_person', '')),
+        'replace_delivery_person': escape_latex(org_stab_questions.get('replace_delivery_person', '')),
+        'replace_supplier': escape_latex(org_stab_questions.get('replace_supplier', ''))
     }
     
-    latex += r'''\subsection*{Organizational Stability +/- ''' + str(org_stab['weight']) + r'''\% of valuation}
+    latex += r'''\subsection*{Organizational Stability +/- ''' + str(org_stab.get('weight', 0)) + r'''\% of valuation}
 
 \begin{center}
 \small
@@ -943,21 +1017,7 @@ Could you easily replace the most important outside supplier to your business? &
 \vspace{0.5cm}
 
 \begin{center}
-\begin{tikzpicture}[scale=0.9]
-% Draw the gray bar
-\fill[lightgray] (0,0) rectangle (8,0.6);
-% Draw scale endpoints
-\draw[thick] (0,0) -- (0,0.6);
-\draw[thick] (8,0) -- (8,0.6);
-% Draw center mark
-\draw[thick] (4,0) -- (4,0.6);
-% Draw the dot at center
-\fill[primarypurple] (4,0.3) circle (0.25);
-% Labels
-\node[anchor=north,font=\small] at (0,-0.2) {''' + format_currency(-org_stab_range) + r'''};
-\node[anchor=north,font=\small] at (4,-0.2) {0};
-\node[anchor=north,font=\small] at (8,-0.2) {''' + format_currency(org_stab_range) + r'''};
-\end{tikzpicture}
+''' + generate_scorecard_scale(org_stab_score, -org_stab_range, org_stab_range) + r'''
 \end{center}
 
 Business buyers are often concerned about how stable or resilient an organization is. An organization that is not heavily dependent on one or two key employees, one supplier or a small group of customers is more saleable and more valuable than a company that has all its eggs in one basket. The best way to create a strong foundation is to diversify:
@@ -972,17 +1032,19 @@ Business buyers are often concerned about how stable or resilient an organizatio
 '''
 
     # Sales and Marketing
-    sales = data['scorecard']['sections']['sales_marketing']
-    sales_range = sections_range['sales_marketing']
+    sales = sections.get('sales_marketing', {})
+    sales_range = sections_range.get('sales_marketing', 0)
+    sales_score = sales.get('scores', {}).get('average', 3)
     
+    sales_questions = sales.get('questions', {})
     sales_answers = {
-        'customer_feedback': escape_latex(sales['questions']['customer_feedback']),
-        'marketing_spend_pct': escape_latex(sales['questions']['marketing_spend_pct']),
-        'google_first_page': escape_latex(sales['questions']['google_first_page']),
-        'written_acquisition_strategy': escape_latex(sales['questions']['written_acquisition_strategy'])
+        'customer_feedback': escape_latex(sales_questions.get('customer_feedback', '')),
+        'marketing_spend_pct': escape_latex(sales_questions.get('marketing_spend_pct', '')),
+        'google_first_page': escape_latex(sales_questions.get('google_first_page', '')),
+        'written_acquisition_strategy': escape_latex(sales_questions.get('written_acquisition_strategy', ''))
     }
     
-    latex += r'''\subsection*{Sales and Marketing +/- ''' + str(sales['weight']) + r'''\% of valuation}
+    latex += r'''\subsection*{Sales and Marketing +/- ''' + str(sales.get('weight', 0)) + r'''\% of valuation}
 
 \begin{center}
 \small
@@ -1009,21 +1071,7 @@ Do you have a written customer acquisition strategy? & ''' + sales_answers['writ
 \vspace{0.5cm}
 
 \begin{center}
-\begin{tikzpicture}[scale=0.9]
-% Draw the gray bar
-\fill[lightgray] (0,0) rectangle (8,0.6);
-% Draw scale endpoints
-\draw[thick] (0,0) -- (0,0.6);
-\draw[thick] (8,0) -- (8,0.6);
-% Draw center mark
-\draw[thick] (4,0) -- (4,0.6);
-% Draw the dot at center
-\fill[primarypurple] (4,0.3) circle (0.25);
-% Labels
-\node[anchor=north,font=\small] at (0,-0.2) {''' + format_currency(-sales_range) + r'''};
-\node[anchor=north,font=\small] at (4,-0.2) {0};
-\node[anchor=north,font=\small] at (8,-0.2) {''' + format_currency(sales_range) + r'''};
-\end{tikzpicture}
+''' + generate_scorecard_scale(sales_score, -sales_range, sales_range) + r'''
 \end{center}
 
 Marketing and sales strategies are essential because they are designed to help you sell your products or services. Through proper communication, marketing helps your business become a market leader and trigger purchase decisions. In addition, it builds a reputation and it's fair to say that your reputation determines your brand equity.
@@ -1064,11 +1112,11 @@ When businesses have an existing marketing plan and established brand, obtaining
 '''
 
     # Add transaction rows
-    transactions = data['comparable_transactions']['transactions']
+    transactions = data.get('comparable_transactions', {}).get('transactions', [])
     for i, trans in enumerate(transactions):
         row_color = "tableodd" if i % 2 == 0 else "white"
         latex += r'''\rowcolor{''' + row_color + r'''}
-''' + trans['naics'] + r''' & ''' + format_currency(trans['revenue']) + r''' & ''' + format_currency(trans['sde']) + r''' & ''' + format_currency(trans['adj_ebitda']) + r''' & ''' + format_currency(trans['price']) + r''' & ''' + str(trans['rev_mult']) + r''' & ''' + str(trans['sde_mult']) + r''' & ''' + str(trans['ebitda_mult']) + r''' \\
+''' + str(trans.get('naics', '')) + r''' & ''' + format_currency(trans.get('revenue', 0)) + r''' & ''' + format_currency(trans.get('sde', 0)) + r''' & ''' + format_currency(trans.get('adj_ebitda', 0)) + r''' & ''' + format_currency(trans.get('price', 0)) + r''' & ''' + str(trans.get('rev_mult', 0)) + r''' & ''' + str(trans.get('sde_mult', 0)) + r''' & ''' + str(trans.get('ebitda_mult', 0)) + r''' \\
 \hline
 '''
 
@@ -1083,63 +1131,105 @@ When businesses have an existing marketing plan and established brand, obtaining
 def main():
     """Main function to generate the report"""
     
+    print("=" * 70)
+    print("BUSINESS VALUATION REPORT GENERATOR")
+    print("=" * 70)
+    print()
+    
     # Check command line arguments
     if len(sys.argv) != 2:
+        print("ERROR: Incorrect usage.")
+        print()
         print("Usage: python generate_report.py <data_file.json>")
-        print("\nExample: python generate_report.py report_data.json")
+        print()
+        print("Example: python generate_report.py report_data.json")
         sys.exit(1)
     
     data_file = sys.argv[1]
     
     # Check if data file exists
     if not os.path.exists(data_file):
-        print(f"Error: Data file '{data_file}' not found.")
+        print(f"ERROR: Data file '{data_file}' not found.")
+        print()
+        print("Please ensure the JSON file exists in the current directory.")
         sys.exit(1)
     
-    # Check if logo exists
-    if not os.path.exists('Chinook_logo.png'):
-        print("Warning: Chinook_logo.png not found. The report will fail to compile without it.")
-        print("Please place the logo file in the same directory as this script.")
+    # Check if required images exist
+    required_images = ['Chinook_logo.png', 'science.png', 'art.png']
+    missing_images = [img for img in required_images if not os.path.exists(img)]
     
-    # Check if science and art images exist
-    if not os.path.exists('science.png'):
-        print("Warning: science.png not found. The report will fail to compile without it.")
-    if not os.path.exists('art.png'):
-        print("Warning: art.png not found. The report will fail to compile without it.")
+    if missing_images:
+        print("WARNING: Missing required image files:")
+        for img in missing_images:
+            print(f"  - {img}")
+        print()
+        print("The report will fail to compile without these images.")
+        print("Please place the image files in the same directory as this script.")
+        print()
+        response = input("Continue anyway? (y/n): ")
+        if response.lower() != 'y':
+            sys.exit(1)
     
     # Load data
     print(f"Loading data from {data_file}...")
     try:
         with open(data_file, 'r') as f:
             data = json.load(f)
+        print("✓ Data loaded successfully")
     except json.JSONDecodeError as e:
-        print(f"Error parsing JSON file: {e}")
+        print(f"ERROR: Invalid JSON format in file: {e}")
         sys.exit(1)
     except Exception as e:
-        print(f"Error reading file: {e}")
+        print(f"ERROR: Failed to read file: {e}")
         sys.exit(1)
+    
+    print()
     
     # Generate LaTeX
     print("Generating LaTeX document...")
-    latex_content = generate_latex(data)
+    try:
+        latex_content = generate_latex(data)
+        print("✓ LaTeX content generated")
+    except Exception as e:
+        print(f"ERROR: Failed to generate LaTeX: {e}")
+        import traceback
+        traceback.print_exc()
+        sys.exit(1)
+    
+    print()
     
     # Write to file
     output_file = 'valuation_report.tex'
     print(f"Writing to {output_file}...")
-    with open(output_file, 'w') as f:
-        f.write(latex_content)
+    try:
+        with open(output_file, 'w', encoding='utf-8') as f:
+            f.write(latex_content)
+        print("✓ LaTeX file written successfully")
+    except Exception as e:
+        print(f"ERROR: Failed to write file: {e}")
+        sys.exit(1)
     
-    print(f"\nSuccess! LaTeX file generated: {output_file}")
-    print("\nTo compile the PDF, run:")
-    print(f"  pdflatex {output_file}")
-    print(f"  pdflatex {output_file}  (run twice for TOC)")
-    print("\nOr use:")
-    print(f"  latexmk -pdf {output_file}")
-    print("\nMake sure you have:")
-    print("  1. Chinook_logo.png in the same directory")
-    print("  2. science.png in the same directory")
-    print("  3. art.png in the same directory")
-    print("  4. A LaTeX distribution installed (e.g., TeX Live, MiKTeX)")
+    print()
+    print("=" * 70)
+    print("SUCCESS! LaTeX file generated:", output_file)
+    print("=" * 70)
+    print()
+    print("Next steps:")
+    print()
+    print("1. Compile the PDF:")
+    print(f"   pdflatex {output_file}")
+    print(f"   pdflatex {output_file}  (run twice for TOC)")
+    print()
+    print("   OR")
+    print()
+    print(f"   latexmk -pdf {output_file}")
+    print()
+    print("2. Make sure you have in the same directory:")
+    print("   - Chinook_logo.png")
+    print("   - science.png")
+    print("   - art.png")
+    print("   - A LaTeX distribution (TeX Live, MiKTeX, etc.)")
+    print()
 
 
 if __name__ == "__main__":
