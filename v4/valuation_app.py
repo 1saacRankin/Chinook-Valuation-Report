@@ -246,15 +246,69 @@ def load_peercomps():
     try:
         if os.path.exists('PeerComps_dataset.xlsx'):
             df = pd.read_excel('PeerComps_dataset.xlsx')
+            # Clean column names - strip whitespace and standardize
+            df.columns = df.columns.str.strip()
+            
+            # Remove any completely empty rows
+            df = df.dropna(how='all')
+            
+            # Remove header rows that might be in the data
+            # (sometimes Excel files have multiple header rows)
+            if len(df) > 0:
+                # Check if first row looks like a header
+                first_row = df.iloc[0]
+                if any(str(val).lower() in ['naics', 'revenue', 'price', 'year'] for val in first_row):
+                    df = df.iloc[1:]
+                    df = df.reset_index(drop=True)
+            
             # Print column names for debugging
             print(f"PeerComps columns: {df.columns.tolist()}")
+            print(f"PeerComps shape: {df.shape}")
+            
             return df
         else:
-            st.warning("PeerComps_dataset.xlsx not found. Using sample data.")
+            st.warning("PeerComps_dataset.xlsx not found in current directory. Using sample data.")
             return None
     except Exception as e:
         st.error(f"Error loading PeerComps dataset: {e}")
+        import traceback
+        print(traceback.format_exc())
         return None
+
+def find_column(df, search_terms, exact_first=True):
+    """
+    Robustly find a column in the dataframe
+    
+    Args:
+        df: DataFrame to search
+        search_terms: List of terms to search for (in order of preference)
+        exact_first: If True, try exact matches first
+    
+    Returns:
+        Column name if found, None otherwise
+    """
+    if df is None or df.empty:
+        return None
+    
+    # Normalize column names
+    cols_lower = {col: col.lower().strip() for col in df.columns}
+    
+    # Try exact matches first
+    if exact_first:
+        for term in search_terms:
+            term_lower = term.lower().strip()
+            for col, col_lower in cols_lower.items():
+                if col_lower == term_lower:
+                    return col
+    
+    # Try partial matches
+    for term in search_terms:
+        term_lower = term.lower().strip()
+        for col, col_lower in cols_lower.items():
+            if term_lower in col_lower:
+                return col
+    
+    return None
 
 def find_comparable_transactions(naics_code, revenue, year_range=5, max_results=20, usd_to_cad=1.40):
     """
@@ -276,15 +330,23 @@ def find_comparable_transactions(naics_code, revenue, year_range=5, max_results=
     # Clean the dataframe
     df = df.copy()
     
-    # Try to find the NAICS column - it might have different names
-    naics_col = None
-    for col in df.columns:
-        if 'naics' in col.lower():
-            naics_col = col
-            break
+    # Find required columns using robust search
+    naics_col = find_column(df, ['NAICS Code', 'NAICS', 'naics_code', 'Industry Code'])
+    year_col = find_column(df, ['Year', 'year', 'Transaction Year', 'Sale Year'])
+    revenue_col = find_column(df, ['Revenue', 'revenue', 'Sales', 'Annual Revenue'])
+    price_col = find_column(df, ['Sale Price', 'Price', 'price', 'Transaction Price', 'Purchase Price'])
+    sde_col = find_column(df, ['SDE', 'sde', 'Seller Discretionary Earnings'])
+    ebitda_col = find_column(df, ['EBITDA', 'ebitda', 'Adj EBITDA', 'Adjusted EBITDA'])
     
+    # Find multiple columns
+    rev_mult_col = find_column(df, ['P/R', 'p/r', 'Revenue Multiple', 'Price/Revenue'])
+    sde_mult_col = find_column(df, ['P/SDE', 'p/sde', 'SDE Multiple', 'Price/SDE'])
+    ebitda_mult_col = find_column(df, ['P/EBITDA', 'p/ebitda', 'EBITDA Multiple', 'Price/EBITDA'])
+    
+    # Debug info
     if naics_col is None:
-        st.warning("Could not find NAICS column in dataset. Using sample data.")
+        available_cols = ", ".join(df.columns.tolist()[:10])
+        st.warning(f"Could not find NAICS column. Available columns: {available_cols}... Using sample data.")
         return generate_sample_comparables(revenue, usd_to_cad)
     
     # Extract numeric NAICS code (remove any text descriptions)
@@ -302,9 +364,12 @@ def find_comparable_transactions(naics_code, revenue, year_range=5, max_results=
         if len(naics_clean) >= length:
             naics_prefix = naics_clean[:length]
             try:
-                temp_df = df[df[naics_col].astype(str).str[:length] == naics_prefix]
+                # Convert NAICS column to string and extract digits only
+                df['naics_clean'] = df[naics_col].astype(str).apply(lambda x: ''.join(filter(str.isdigit, x)))
+                temp_df = df[df['naics_clean'].str[:length] == naics_prefix]
                 if not temp_df.empty:
                     filtered_df = temp_df
+                    st.info(f"Found {len(filtered_df)} transactions matching NAICS prefix: {naics_prefix} ({length} digits)")
                     break
             except Exception as e:
                 continue
@@ -313,46 +378,46 @@ def find_comparable_transactions(naics_code, revenue, year_range=5, max_results=
         st.warning(f"No NAICS matches found for {naics_code}. Using sample data.")
         return generate_sample_comparables(revenue, usd_to_cad)
     
-    # Filter by year
-    year_col = None
-    for col in df.columns:
-        if 'year' in col.lower():
-            year_col = col
-            break
-    
+    # Filter by year if column exists
     if year_col and year_col in filtered_df.columns:
         try:
+            filtered_df[year_col] = pd.to_numeric(filtered_df[year_col], errors='coerce')
             filtered_df = filtered_df[filtered_df[year_col] >= min_year]
-        except:
-            pass
+            if not filtered_df.empty:
+                st.info(f"Filtered to {len(filtered_df)} transactions from {min_year} onwards")
+        except Exception as e:
+            st.warning(f"Could not filter by year: {e}")
     
     # Filter by similar revenue (within 50% to 200% of target)
-    revenue_col = None
-    for col in df.columns:
-        if 'revenue' in col.lower() and 'range' not in col.lower():
-            revenue_col = col
-            break
-    
     if revenue_col and revenue_col in filtered_df.columns and revenue > 0:
         try:
+            filtered_df[revenue_col] = pd.to_numeric(filtered_df[revenue_col], errors='coerce')
+            before_count = len(filtered_df)
             filtered_df = filtered_df[
                 (filtered_df[revenue_col] >= revenue * 0.5) & 
                 (filtered_df[revenue_col] <= revenue * 2.0)
             ]
-        except:
-            pass
+            if len(filtered_df) < before_count:
+                st.info(f"Filtered to {len(filtered_df)} transactions with similar revenue (${revenue*0.5:,.0f} - ${revenue*2:,.0f})")
+        except Exception as e:
+            st.warning(f"Could not filter by revenue: {e}")
     
     # Sort by year (most recent first) and revenue similarity
-    if not filtered_df.empty and year_col:
+    if not filtered_df.empty:
         try:
-            if revenue_col:
+            sort_cols = []
+            if year_col and year_col in filtered_df.columns:
+                sort_cols.append(year_col)
+            if revenue_col and revenue_col in filtered_df.columns and revenue > 0:
                 filtered_df['revenue_diff'] = abs(filtered_df[revenue_col] - revenue)
-                filtered_df = filtered_df.sort_values([year_col, 'revenue_diff'], ascending=[False, True])
-                filtered_df = filtered_df.drop('revenue_diff', axis=1)
-            else:
-                filtered_df = filtered_df.sort_values([year_col], ascending=[False])
-        except:
-            pass
+                sort_cols.append('revenue_diff')
+            
+            if sort_cols:
+                filtered_df = filtered_df.sort_values(sort_cols, ascending=[False] * len(sort_cols))
+                if 'revenue_diff' in filtered_df.columns:
+                    filtered_df = filtered_df.drop('revenue_diff', axis=1)
+        except Exception as e:
+            st.warning(f"Could not sort results: {e}")
     
     # Limit results
     filtered_df = filtered_df.head(max_results)
@@ -360,34 +425,38 @@ def find_comparable_transactions(naics_code, revenue, year_range=5, max_results=
     # Convert to transaction format with CAD conversion
     transactions = []
     
-    # Find column names dynamically
-    price_col = next((col for col in df.columns if 'price' in col.lower()), None)
-    sde_col = next((col for col in df.columns if 'sde' in col.lower()), None)
-    ebitda_col = next((col for col in df.columns if 'ebitda' in col.lower() and 'mult' not in col.lower()), None)
-    rev_mult_col = next((col for col in df.columns if 'p/r' in col.lower() or ('revenue' in col.lower() and 'mult' in col.lower())), None)
-    sde_mult_col = next((col for col in df.columns if 'p/sde' in col.lower() or ('sde' in col.lower() and 'mult' in col.lower())), None)
-    ebitda_mult_col = next((col for col in df.columns if 'p/ebitda' in col.lower() or ('ebitda' in col.lower() and 'mult' in col.lower())), None)
-    
     for _, row in filtered_df.iterrows():
         try:
             trans = {
-                "naics": str(row.get(naics_col, '')),
-                "revenue": int(row.get(revenue_col, 0) * usd_to_cad) if revenue_col else 0,
-                "sde": int(row.get(sde_col, 0) * usd_to_cad) if sde_col else 0,
-                "adj_ebitda": int(row.get(ebitda_col, 0) * usd_to_cad) if ebitda_col else 0,
-                "price": int(row.get(price_col, 0) * usd_to_cad) if price_col else 0,
-                "rev_mult": round(row.get(rev_mult_col, 0), 2) if rev_mult_col else 0,
-                "sde_mult": round(row.get(sde_mult_col, 0), 2) if sde_mult_col else 0,
-                "ebitda_mult": round(row.get(ebitda_mult_col, 0), 2) if ebitda_mult_col else 0
+                "naics": str(row.get(naics_col, '')) if naics_col else '',
+                "revenue": int(float(row.get(revenue_col, 0)) * usd_to_cad) if revenue_col and pd.notna(row.get(revenue_col)) else 0,
+                "sde": int(float(row.get(sde_col, 0)) * usd_to_cad) if sde_col and pd.notna(row.get(sde_col)) else 0,
+                "adj_ebitda": int(float(row.get(ebitda_col, 0)) * usd_to_cad) if ebitda_col and pd.notna(row.get(ebitda_col)) else 0,
+                "price": int(float(row.get(price_col, 0)) * usd_to_cad) if price_col and pd.notna(row.get(price_col)) else 0,
+                "rev_mult": round(float(row.get(rev_mult_col, 0)), 2) if rev_mult_col and pd.notna(row.get(rev_mult_col)) else 0,
+                "sde_mult": round(float(row.get(sde_mult_col, 0)), 2) if sde_mult_col and pd.notna(row.get(sde_mult_col)) else 0,
+                "ebitda_mult": round(float(row.get(ebitda_mult_col, 0)), 2) if ebitda_mult_col and pd.notna(row.get(ebitda_mult_col)) else 0
             }
+            
+            # Calculate missing multiples if we have the data
+            if trans["price"] > 0:
+                if trans["rev_mult"] == 0 and trans["revenue"] > 0:
+                    trans["rev_mult"] = round(trans["price"] / trans["revenue"], 2)
+                if trans["sde_mult"] == 0 and trans["sde"] > 0:
+                    trans["sde_mult"] = round(trans["price"] / trans["sde"], 2)
+                if trans["ebitda_mult"] == 0 and trans["adj_ebitda"] > 0:
+                    trans["ebitda_mult"] = round(trans["price"] / trans["adj_ebitda"], 2)
+            
             transactions.append(trans)
         except Exception as e:
             continue
     
     if not transactions:
         # Return sample data if no matches found
+        st.warning("Could not convert transactions to proper format. Using sample data.")
         return generate_sample_comparables(revenue, usd_to_cad)
     
+    st.success(f"✅ Successfully loaded {len(transactions)} comparable transactions from PeerComps dataset")
     return transactions
 
 def generate_sample_comparables(revenue, usd_to_cad=1.40):
@@ -963,7 +1032,7 @@ with tab3:
     st.divider()
     
     # Organizational Stability
-    st.subheader("🏛️ Organizational Stability")
+    st.subheader("🛡️ Organizational Stability")
     st.markdown("**Weight: 3.75% of valuation**")
     
     col1, col2 = st.columns(2)
@@ -1336,16 +1405,27 @@ with tab4:
     
     # Comparables preview
     st.subheader("📋 Comparable Transactions Preview")
-    st.info(f"Found {len(transactions)} comparable transactions. Amounts converted from USD to CAD at rate of {USD_TO_CAD}.")
+    
+    if transactions and len(transactions) > 0 and 'naics' in transactions[0]:
+        # Check if we're using real data or sample data
+        is_sample_data = all(t.get('naics', '') == "311999" for t in transactions)
+        
+        if is_sample_data:
+            st.warning(f"⚠️ Showing {len(transactions)} sample transactions (PeerComps data not available or no matches found)")
+        else:
+            st.success(f"✅ Found {len(transactions)} real comparable transactions from PeerComps dataset")
+            st.info(f"Amounts converted from USD to CAD at rate of {USD_TO_CAD}")
     
     if transactions:
         trans_df = pd.DataFrame(transactions[:10])  # Show first 10
         st.dataframe(trans_df, use_container_width=True)
+    else:
+        st.error("No comparable transactions available")
     
     st.divider()
     
     # JSON preview
-    with st.expander("🔍 Preview JSON Output"):
+    with st.expander("📄 Preview JSON Output"):
         st.json(output_data)
     
     # Download button
@@ -1415,5 +1495,47 @@ with st.sidebar:
     df = load_peercomps()
     if df is not None:
         st.success(f"✅ PeerComps dataset loaded ({len(df):,} transactions)")
+        
+        with st.expander("📊 Dataset Information"):
+            st.markdown("**Available Columns:**")
+            cols_list = ", ".join(df.columns.tolist())
+            st.text(cols_list)
+            
+            # Show column detection results
+            st.markdown("**Detected Key Columns:**")
+            naics_col = find_column(df, ['NAICS Code', 'NAICS', 'naics_code'])
+            year_col = find_column(df, ['Year', 'year', 'Transaction Year'])
+            revenue_col = find_column(df, ['Revenue', 'revenue', 'Sales'])
+            price_col = find_column(df, ['Sale Price', 'Price', 'price'])
+            
+            col_status = []
+            col_status.append(f"✅ NAICS: {naics_col}" if naics_col else "❌ NAICS: Not found")
+            col_status.append(f"✅ Year: {year_col}" if year_col else "❌ Year: Not found")
+            col_status.append(f"✅ Revenue: {revenue_col}" if revenue_col else "❌ Revenue: Not found")
+            col_status.append(f"✅ Price: {price_col}" if price_col else "❌ Price: Not found")
+            
+            for status in col_status:
+                st.text(status)
+            
+            # Show sample data
+            st.markdown("**Sample Data (first 5 rows):**")
+            st.dataframe(df.head(5), use_container_width=True)
+            
+            # Test button
+            if st.button("🧪 Test Dataset Search"):
+                st.markdown("**Testing search for Manufacturing (NAICS 311999)...**")
+                test_transactions = find_comparable_transactions(
+                    naics_code="311999",
+                    revenue=500000,
+                    year_range=5,
+                    max_results=10,
+                    usd_to_cad=1.40
+                )
+                if test_transactions:
+                    st.success(f"Found {len(test_transactions)} test transactions!")
+                    st.dataframe(pd.DataFrame(test_transactions[:5]))
+                else:
+                    st.error("No transactions found in test search")
     else:
         st.warning("⚠️ PeerComps dataset not found. Using sample data.")
+        st.info("Place 'PeerComps_dataset.xlsx' in the same directory as this app to use real data.")
