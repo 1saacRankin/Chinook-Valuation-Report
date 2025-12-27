@@ -4,11 +4,12 @@ import json
 from datetime import datetime
 import io
 from rapidfuzz import fuzz, process
+import os
 
 # Set page config
 st.set_page_config(page_title="Business Valuation Report Generator", layout="wide")
 
-# NAICS Code Structure (simplified hierarchy)
+# Complete NAICS Code Structure
 NAICS_CODES = {
     "11": "Agriculture, Forestry, Fishing and Hunting",
     "21": "Mining, Quarrying, and Oil and Gas Extraction",
@@ -33,6 +34,31 @@ NAICS_CODES = {
 }
 
 NAICS_SUBCODES = {
+    # Agriculture
+    "11": {
+        "111": "Crop Production",
+        "112": "Animal Production",
+        "113": "Forestry and Logging",
+        "114": "Fishing, Hunting and Trapping",
+        "115": "Support Activities for Agriculture and Forestry"
+    },
+    # Mining
+    "21": {
+        "211": "Oil and Gas Extraction",
+        "212": "Mining (except Oil and Gas)",
+        "213": "Support Activities for Mining"
+    },
+    # Utilities
+    "22": {
+        "221": "Utilities"
+    },
+    # Construction
+    "23": {
+        "236": "Construction of Buildings",
+        "237": "Heavy and Civil Engineering Construction",
+        "238": "Specialty Trade Contractors"
+    },
+    # Manufacturing
     "31-33": {
         "311": "Food Manufacturing",
         "312": "Beverage and Tobacco Product Manufacturing",
@@ -56,6 +82,106 @@ NAICS_SUBCODES = {
         "337": "Furniture and Related Product Manufacturing",
         "339": "Miscellaneous Manufacturing"
     },
+    # Wholesale Trade
+    "42": {
+        "423": "Merchant Wholesalers, Durable Goods",
+        "424": "Merchant Wholesalers, Nondurable Goods",
+        "425": "Wholesale Electronic Markets"
+    },
+    # Retail Trade
+    "44-45": {
+        "441": "Motor Vehicle and Parts Dealers",
+        "442": "Furniture and Home Furnishings Stores",
+        "443": "Electronics and Appliance Stores",
+        "444": "Building Material and Garden Equipment Dealers",
+        "445": "Food and Beverage Stores",
+        "446": "Health and Personal Care Stores",
+        "447": "Gasoline Stations",
+        "448": "Clothing and Accessories Stores",
+        "451": "Sporting Goods, Hobby, Book, and Music Stores",
+        "452": "General Merchandise Stores",
+        "453": "Miscellaneous Store Retailers",
+        "454": "Nonstore Retailers"
+    },
+    # Transportation
+    "48-49": {
+        "481": "Air Transportation",
+        "482": "Rail Transportation",
+        "483": "Water Transportation",
+        "484": "Truck Transportation",
+        "485": "Transit and Ground Passenger Transportation",
+        "486": "Pipeline Transportation",
+        "487": "Scenic and Sightseeing Transportation",
+        "488": "Support Activities for Transportation",
+        "492": "Couriers and Messengers",
+        "493": "Warehousing and Storage"
+    },
+    # Information
+    "51": {
+        "511": "Publishing Industries",
+        "512": "Motion Picture and Sound Recording Industries",
+        "515": "Broadcasting",
+        "517": "Telecommunications",
+        "518": "Data Processing, Hosting, and Related Services",
+        "519": "Other Information Services"
+    },
+    # Finance and Insurance
+    "52": {
+        "521": "Monetary Authorities - Central Bank",
+        "522": "Credit Intermediation and Related Activities",
+        "523": "Securities, Commodity Contracts, and Other Financial Investments",
+        "524": "Insurance Carriers and Related Activities",
+        "525": "Funds, Trusts, and Other Financial Vehicles"
+    },
+    # Real Estate
+    "53": {
+        "531": "Real Estate",
+        "532": "Rental and Leasing Services",
+        "533": "Lessors of Nonfinancial Intangible Assets"
+    },
+    # Professional Services
+    "54": {
+        "541": "Professional, Scientific, and Technical Services"
+    },
+    # Management
+    "55": {
+        "551": "Management of Companies and Enterprises"
+    },
+    # Administrative Services
+    "56": {
+        "561": "Administrative and Support Services",
+        "562": "Waste Management and Remediation Services"
+    },
+    # Educational Services
+    "61": {
+        "611": "Educational Services"
+    },
+    # Health Care
+    "62": {
+        "621": "Ambulatory Health Care Services",
+        "622": "Hospitals",
+        "623": "Nursing and Residential Care Facilities",
+        "624": "Social Assistance"
+    },
+    # Arts and Entertainment
+    "71": {
+        "711": "Performing Arts, Spectator Sports, and Related Industries",
+        "712": "Museums, Historical Sites, and Similar Institutions",
+        "713": "Amusement, Gambling, and Recreation Industries"
+    },
+    # Accommodation and Food
+    "72": {
+        "721": "Accommodation",
+        "722": "Food Services and Drinking Places"
+    },
+    # Other Services
+    "81": {
+        "811": "Repair and Maintenance",
+        "812": "Personal and Laundry Services",
+        "813": "Religious, Grantmaking, Civic, Professional Organizations",
+        "814": "Private Households"
+    },
+    # Manufacturing subcategories
     "311": {
         "3111": "Animal Food Manufacturing",
         "3112": "Grain and Oilseed Milling",
@@ -73,8 +199,221 @@ NAICS_SUBCODES = {
     },
     "31199": {
         "311999": "All Other Miscellaneous Food Manufacturing"
+    },
+    "423": {
+        "4231": "Motor Vehicle and Parts Merchant Wholesalers",
+        "4232": "Furniture and Home Furnishing Merchant Wholesalers",
+        "4233": "Lumber and Other Construction Materials Merchant Wholesalers",
+        "4234": "Professional and Commercial Equipment Merchant Wholesalers",
+        "4235": "Metal and Mineral Merchant Wholesalers",
+        "4236": "Household Appliances and Electrical Equipment Merchant Wholesalers",
+        "4237": "Hardware, Plumbing, Heating Equipment Merchant Wholesalers",
+        "4238": "Machinery, Equipment, and Supplies Merchant Wholesalers",
+        "4239": "Miscellaneous Durable Goods Merchant Wholesalers"
+    },
+    "541": {
+        "5411": "Legal Services",
+        "5412": "Accounting, Tax Preparation, Bookkeeping Services",
+        "5413": "Architectural, Engineering Services",
+        "5414": "Specialized Design Services",
+        "5415": "Computer Systems Design Services",
+        "5416": "Management, Scientific, Technical Consulting Services",
+        "5417": "Scientific Research and Development Services",
+        "5418": "Advertising, Public Relations Services",
+        "5419": "Other Professional, Scientific, Technical Services"
+    },
+    "621": {
+        "6211": "Offices of Physicians",
+        "6212": "Offices of Dentists",
+        "6213": "Offices of Other Health Practitioners",
+        "6214": "Outpatient Care Centers",
+        "6215": "Medical and Diagnostic Laboratories",
+        "6216": "Home Health Care Services",
+        "6219": "Other Ambulatory Health Care Services"
+    },
+    "722": {
+        "7221": "Full-Service Restaurants",
+        "7222": "Limited-Service Restaurants",
+        "7223": "Special Food Services",
+        "7224": "Drinking Places (Alcoholic Beverages)"
     }
 }
+
+# Load PeerComps dataset
+@st.cache_data
+def load_peercomps():
+    """Load the PeerComps dataset"""
+    try:
+        if os.path.exists('PeerComps_dataset.xlsx'):
+            df = pd.read_excel('PeerComps_dataset.xlsx')
+            # Print column names for debugging
+            print(f"PeerComps columns: {df.columns.tolist()}")
+            return df
+        else:
+            st.warning("PeerComps_dataset.xlsx not found. Using sample data.")
+            return None
+    except Exception as e:
+        st.error(f"Error loading PeerComps dataset: {e}")
+        return None
+
+def find_comparable_transactions(naics_code, revenue, year_range=5, max_results=20, usd_to_cad=1.40):
+    """
+    Find comparable transactions from PeerComps dataset
+    
+    Args:
+        naics_code: NAICS code to search for
+        revenue: Company's revenue for filtering
+        year_range: How many years back to look
+        max_results: Maximum number of comparables to return
+        usd_to_cad: USD to CAD exchange rate
+    """
+    df = load_peercomps()
+    
+    if df is None or df.empty:
+        # Return sample data if dataset not available
+        return generate_sample_comparables(revenue, usd_to_cad)
+    
+    # Clean the dataframe
+    df = df.copy()
+    
+    # Try to find the NAICS column - it might have different names
+    naics_col = None
+    for col in df.columns:
+        if 'naics' in col.lower():
+            naics_col = col
+            break
+    
+    if naics_col is None:
+        st.warning("Could not find NAICS column in dataset. Using sample data.")
+        return generate_sample_comparables(revenue, usd_to_cad)
+    
+    # Extract numeric NAICS code (remove any text descriptions)
+    naics_clean = ''.join(filter(str.isdigit, str(naics_code)))
+    
+    # Current year for filtering
+    current_year = datetime.now().year
+    min_year = current_year - year_range
+    
+    # Filter by NAICS code (match first 3-6 digits depending on specificity)
+    naics_lengths = [6, 5, 4, 3, 2]  # Try matching from most to least specific
+    filtered_df = pd.DataFrame()
+    
+    for length in naics_lengths:
+        if len(naics_clean) >= length:
+            naics_prefix = naics_clean[:length]
+            try:
+                temp_df = df[df[naics_col].astype(str).str[:length] == naics_prefix]
+                if not temp_df.empty:
+                    filtered_df = temp_df
+                    break
+            except Exception as e:
+                continue
+    
+    if filtered_df.empty:
+        st.warning(f"No NAICS matches found for {naics_code}. Using sample data.")
+        return generate_sample_comparables(revenue, usd_to_cad)
+    
+    # Filter by year
+    year_col = None
+    for col in df.columns:
+        if 'year' in col.lower():
+            year_col = col
+            break
+    
+    if year_col and year_col in filtered_df.columns:
+        try:
+            filtered_df = filtered_df[filtered_df[year_col] >= min_year]
+        except:
+            pass
+    
+    # Filter by similar revenue (within 50% to 200% of target)
+    revenue_col = None
+    for col in df.columns:
+        if 'revenue' in col.lower() and 'range' not in col.lower():
+            revenue_col = col
+            break
+    
+    if revenue_col and revenue_col in filtered_df.columns and revenue > 0:
+        try:
+            filtered_df = filtered_df[
+                (filtered_df[revenue_col] >= revenue * 0.5) & 
+                (filtered_df[revenue_col] <= revenue * 2.0)
+            ]
+        except:
+            pass
+    
+    # Sort by year (most recent first) and revenue similarity
+    if not filtered_df.empty and year_col:
+        try:
+            if revenue_col:
+                filtered_df['revenue_diff'] = abs(filtered_df[revenue_col] - revenue)
+                filtered_df = filtered_df.sort_values([year_col, 'revenue_diff'], ascending=[False, True])
+                filtered_df = filtered_df.drop('revenue_diff', axis=1)
+            else:
+                filtered_df = filtered_df.sort_values([year_col], ascending=[False])
+        except:
+            pass
+    
+    # Limit results
+    filtered_df = filtered_df.head(max_results)
+    
+    # Convert to transaction format with CAD conversion
+    transactions = []
+    
+    # Find column names dynamically
+    price_col = next((col for col in df.columns if 'price' in col.lower()), None)
+    sde_col = next((col for col in df.columns if 'sde' in col.lower()), None)
+    ebitda_col = next((col for col in df.columns if 'ebitda' in col.lower() and 'mult' not in col.lower()), None)
+    rev_mult_col = next((col for col in df.columns if 'p/r' in col.lower() or ('revenue' in col.lower() and 'mult' in col.lower())), None)
+    sde_mult_col = next((col for col in df.columns if 'p/sde' in col.lower() or ('sde' in col.lower() and 'mult' in col.lower())), None)
+    ebitda_mult_col = next((col for col in df.columns if 'p/ebitda' in col.lower() or ('ebitda' in col.lower() and 'mult' in col.lower())), None)
+    
+    for _, row in filtered_df.iterrows():
+        try:
+            trans = {
+                "naics": str(row.get(naics_col, '')),
+                "revenue": int(row.get(revenue_col, 0) * usd_to_cad) if revenue_col else 0,
+                "sde": int(row.get(sde_col, 0) * usd_to_cad) if sde_col else 0,
+                "adj_ebitda": int(row.get(ebitda_col, 0) * usd_to_cad) if ebitda_col else 0,
+                "price": int(row.get(price_col, 0) * usd_to_cad) if price_col else 0,
+                "rev_mult": round(row.get(rev_mult_col, 0), 2) if rev_mult_col else 0,
+                "sde_mult": round(row.get(sde_mult_col, 0), 2) if sde_mult_col else 0,
+                "ebitda_mult": round(row.get(ebitda_mult_col, 0), 2) if ebitda_mult_col else 0
+            }
+            transactions.append(trans)
+        except Exception as e:
+            continue
+    
+    if not transactions:
+        # Return sample data if no matches found
+        return generate_sample_comparables(revenue, usd_to_cad)
+    
+    return transactions
+
+def generate_sample_comparables(revenue, usd_to_cad=1.40):
+    """Generate sample comparable transactions if dataset is unavailable"""
+    base_revenue = revenue if revenue > 0 else 500000
+    transactions = []
+    
+    for i in range(16):
+        rev = base_revenue * (0.8 + i * 0.05)
+        sde = rev * (0.15 + i * 0.01)
+        ebitda = sde * 0.6
+        price = rev * (0.73 + i * 0.01)
+        
+        trans = {
+            "naics": "311999",
+            "revenue": int(rev),
+            "sde": int(sde),
+            "adj_ebitda": int(ebitda),
+            "price": int(price),
+            "rev_mult": round(price / rev, 2),
+            "sde_mult": round(price / sde, 2),
+            "ebitda_mult": round(price / ebitda, 2)
+        }
+        transactions.append(trans)
+    
+    return transactions
 
 # Required financial row items
 REQUIRED_FINANCIAL_ITEMS = [
@@ -97,9 +436,9 @@ def score_to_answer(score, question_type):
     """Convert numeric score (1-5) to text answer"""
     answers = {
         'yes_no': {1: 'No', 2: 'Rarely', 3: 'Sometimes', 4: 'Usually', 5: 'Yes'},
-        'percentage_low': {1: '>50%', 2: '31-50%', 3: '16-30%', 4: '6-15%', 5: '<5%'},
-        'percentage_high': {1: '<1%', 2: '1-5%', 3: '6-10%', 4: '11-20%', 5: '>20%'},
-        'percentage_reverse': {1: '0%', 2: '1-10%', 3: '11-25%', 4: '26-50%', 5: '>50%'},
+        'percentage_low': {1: 'Over 50\\%', 2: '31-50\\%', 3: '16-30\\%', 4: '6-15\\%', 5: 'Under 5\\%'},
+        'percentage_high': {1: 'Under 1\\%', 2: '1-5\\%', 3: '6-10\\%', 4: '11-20\\%', 5: 'Over 20\\%'},
+        'percentage_reverse': {1: '0\\%', 2: '1-10\\%', 3: '11-25\\%', 4: '26-50\\%', 5: 'Over 50\\%'},
         'ease': {1: "No - It's me and irreplaceable", 2: 'Very difficult', 3: 'Somewhat difficult', 4: 'Possible with training', 5: 'Yes - Easily replaceable'},
         'revenue_model': {1: 'Transactional/walk-in only', 2: 'Some repeat customers', 3: 'Mix of recurring and transactional', 4: 'Mostly recurring revenue', 5: 'High recurring revenue contracts'}
     }
@@ -148,7 +487,7 @@ with tab1:
     with col1:
         company_name = st.text_input("Company Name", value="Harry's Honey")
         
-        # NAICS Code Selection
+        # NAICS Code Selection - Simplified to Sector and Subsector only
         st.subheader("NAICS Industry Code")
         
         # Level 1: Sector
@@ -159,38 +498,19 @@ with tab1:
             index=4  # Manufacturing
         )
         
-        # Level 2: Subsector (if Manufacturing)
+        # Level 2: Subsector (final level)
         naics_full_code = sector
         naics_description = NAICS_CODES[sector]
         
         if sector in NAICS_SUBCODES:
+            subsector_options = list(NAICS_SUBCODES[sector].keys())
             subsector = st.selectbox(
                 "Select Subsector",
-                options=list(NAICS_SUBCODES[sector].keys()),
+                options=subsector_options,
                 format_func=lambda x: f"{x} - {NAICS_SUBCODES[sector][x]}"
             )
             naics_full_code = subsector
             naics_description = NAICS_SUBCODES[sector][subsector]
-            
-            # Level 3: Industry Group
-            if subsector in NAICS_SUBCODES:
-                industry_group = st.selectbox(
-                    "Select Industry Group",
-                    options=list(NAICS_SUBCODES[subsector].keys()),
-                    format_func=lambda x: f"{x} - {NAICS_SUBCODES[subsector][x]}"
-                )
-                naics_full_code = industry_group
-                naics_description = NAICS_SUBCODES[subsector][industry_group]
-                
-                # Level 4: Detailed Industry
-                if industry_group in NAICS_SUBCODES:
-                    detailed = st.selectbox(
-                        "Select Detailed Industry",
-                        options=list(NAICS_SUBCODES[industry_group].keys()),
-                        format_func=lambda x: f"{x} - {NAICS_SUBCODES[industry_group][x]}"
-                    )
-                    naics_full_code = detailed
-                    naics_description = NAICS_SUBCODES[industry_group][detailed]
         
         st.info(f"**Selected NAICS Code:** {naics_full_code} - {naics_description}")
     
@@ -203,7 +523,7 @@ with tab1:
     col1, col2, col3 = st.columns(3)
     
     with col1:
-        sample_size = st.number_input("Sample Size", value=850, step=1)
+        sample_size = st.number_input("Sample Size", value=10, step=1)
         cost_of_goods_avg = st.number_input("Cost of Goods Avg (%)", value=40.0, step=0.01)
     
     with col2:
@@ -554,7 +874,7 @@ with tab3:
         
         accountant = st.slider(
             "Do you hire an accountant for year-end statements/tax returns?",
-            1, 5, 5,
+            1, 5, 3,
             help="1 = No, 5 = Yes, certified accountant"
         )
         st.caption(f"Answer: {score_to_answer(accountant, 'yes_no')}")
@@ -562,14 +882,14 @@ with tab3:
     with col2:
         annual_budget = st.slider(
             "Do you prepare an annual operating budget?",
-            1, 5, 2,
+            1, 5, 3,
             help="1 = No, 5 = Yes, detailed budget"
         )
         st.caption(f"Answer: {score_to_answer(annual_budget, 'yes_no')}")
         
         payables_on_time = st.slider(
             "Are your payables always paid in full and on-time?",
-            1, 5, 5,
+            1, 5, 3,
             help="1 = Often late, 5 = Always on time"
         )
         st.caption(f"Answer: {score_to_answer(payables_on_time, 'yes_no')}")
@@ -584,14 +904,14 @@ with tab3:
     with col1:
         thrive_without_owner = st.slider(
             "Would your company thrive if you left for 2 months?",
-            1, 5, 2,
+            1, 5, 3,
             help="1 = Would collapse, 5 = Would thrive"
         )
         st.caption(f"Answer: {score_to_answer(thrive_without_owner, 'yes_no')}")
         
         vacation_over_month = st.slider(
             "Have you taken a vacation longer than 1 month in the past 2 years?",
-            1, 5, 1,
+            1, 5, 3,
             help="1 = No, 5 = Yes, multiple times"
         )
         st.caption(f"Answer: {score_to_answer(vacation_over_month, 'yes_no')}")
@@ -599,7 +919,7 @@ with tab3:
     with col2:
         customers_ask_by_name = st.slider(
             "What percentage of customers ask for you by name?",
-            1, 5, 5,
+            1, 5, 3,
             help="1 = >50%, 5 = 0%"
         )
         st.caption(f"Answer: {score_to_answer(customers_ask_by_name, 'percentage_low')}")
@@ -614,7 +934,7 @@ with tab3:
     with col1:
         identified_opportunities = st.slider(
             "Have you identified growth opportunities in your business?",
-            1, 5, 4,
+            1, 5, 3,
             help="1 = No opportunities, 5 = Multiple documented opportunities"
         )
         st.caption(f"Answer: {score_to_answer(identified_opportunities, 'yes_no')}")
@@ -635,7 +955,7 @@ with tab3:
     
     revenue_model = st.slider(
         "Revenue Model Quality",
-        1, 5, 2,
+        1, 5, 3,
         help="1 = Transactional/walk-in only, 5 = High recurring revenue contracts"
     )
     st.caption(f"Answer: {score_to_answer(revenue_model, 'revenue_model')}")
@@ -650,21 +970,21 @@ with tab3:
     with col1:
         largest_customer = st.slider(
             "How much revenue does your largest customer represent?",
-            1, 5, 5,
+            1, 5, 3,
             help="1 = >25%, 5 = <5%"
         )
         st.caption(f"Answer: {score_to_answer(largest_customer, 'percentage_low')}")
         
         top_5_customers = st.slider(
             "How much revenue do your top 5 customers represent?",
-            1, 5, 4,
+            1, 5, 3,
             help="1 = >50%, 5 = <10%"
         )
         st.caption(f"Answer: {score_to_answer(top_5_customers, 'percentage_low')}")
         
         replace_sales_person = st.slider(
             "Could you easily replace the person most responsible for sales?",
-            1, 5, 1,
+            1, 5, 3,
             help="1 = It's me and irreplaceable, 5 = Easily replaceable"
         )
         st.caption(f"Answer: {score_to_answer(replace_sales_person, 'ease')}")
@@ -672,14 +992,14 @@ with tab3:
     with col2:
         replace_delivery_person = st.slider(
             "Could you easily replace the person most responsible for delivery?",
-            1, 5, 1,
+            1, 5, 3,
             help="1 = It's me and irreplaceable, 5 = Easily replaceable"
         )
         st.caption(f"Answer: {score_to_answer(replace_delivery_person, 'ease')}")
         
         replace_supplier = st.slider(
             "Could you easily replace your most important supplier?",
-            1, 5, 5,
+            1, 5, 3,
             help="1 = No alternatives, 5 = Multiple alternatives"
         )
         st.caption(f"Answer: {score_to_answer(replace_supplier, 'ease')}")
@@ -694,7 +1014,7 @@ with tab3:
     with col1:
         customer_feedback = st.slider(
             "Do you collect customer feedback with a documented process?",
-            1, 5, 2,
+            1, 5, 3,
             help="1 = No, 5 = Yes, systematic process"
         )
         st.caption(f"Answer: {score_to_answer(customer_feedback, 'yes_no')}")
@@ -709,14 +1029,14 @@ with tab3:
     with col2:
         google_first_page = st.slider(
             "Do you show up on first page of local Google search?",
-            1, 5, 5,
+            1, 5, 3,
             help="1 = No, 5 = Yes, top result"
         )
         st.caption(f"Answer: {score_to_answer(google_first_page, 'yes_no')}")
         
         written_acquisition_strategy = st.slider(
             "Do you have a written customer acquisition strategy?",
-            1, 5, 2,
+            1, 5, 3,
             help="1 = No, 5 = Yes, comprehensive"
         )
         st.caption(f"Answer: {score_to_answer(written_acquisition_strategy, 'yes_no')}")
@@ -762,11 +1082,38 @@ with tab4:
         weighted_avg_revenue = fin_data['Revenue'].iloc[-1]
         weighted_avg_sde = sde_values[-1]
     
-    # Simple valuation calculation
-    revenue_multiple = 0.84
-    sde_multiple = 3.7
-    adj_ebitda_multiple = 4.45
+    # Get comparable transactions from PeerComps dataset
+    USD_TO_CAD = 1.40
+    transactions = find_comparable_transactions(
+        naics_code=naics_full_code,
+        revenue=weighted_avg_revenue,
+        year_range=5,
+        max_results=20,
+        usd_to_cad=USD_TO_CAD
+    )
+    
+    # Calculate valuation multiples from comparables
+    if transactions:
+        revenue_multiples = [t['rev_mult'] for t in transactions if t['rev_mult'] > 0]
+        sde_multiples = [t['sde_mult'] for t in transactions if t['sde_mult'] > 0 and t['sde_mult'] < 10]
+        ebitda_multiples = [t['ebitda_mult'] for t in transactions if t['ebitda_mult'] > 0 and t['ebitda_mult'] < 15]
+        
+        revenue_multiple = round(sum(revenue_multiples) / len(revenue_multiples), 2) if revenue_multiples else 0.84
+        sde_multiple = round(sum(sde_multiples) / len(sde_multiples), 2) if sde_multiples else 3.7
+        adj_ebitda_multiple = round(sum(ebitda_multiples) / len(ebitda_multiples), 2) if ebitda_multiples else 4.45
+    else:
+        revenue_multiple = 0.84
+        sde_multiple = 3.7
+        adj_ebitda_multiple = 4.45
+    
     mpsp = int(weighted_avg_revenue * revenue_multiple)
+    
+    # Calculate revenue range from comparables
+    if transactions:
+        revenues = [t['revenue'] for t in transactions]
+        revenue_range = [min(revenues), max(revenues)]
+    else:
+        revenue_range = [int(weighted_avg_revenue * 0.5), int(weighted_avg_revenue * 1.5)]
     
     # Calculate scorecard adjustments
     def calculate_section_adjustment(scores, weight):
@@ -808,7 +1155,8 @@ with tab4:
             "sde_multiple": sde_multiple,
             "adj_ebitda_multiple": adj_ebitda_multiple,
             "weighted_avg_revenue": int(weighted_avg_revenue),
-            "weighted_avg_sde": int(weighted_avg_sde)
+            "weighted_avg_sde": int(weighted_avg_sde),
+            "usd_to_cad_rate": USD_TO_CAD
         },
         "financial_data": {
             "years": fin_data['Year'].tolist(),
@@ -940,26 +1288,9 @@ with tab4:
             }
         },
         "comparable_transactions": {
-            "count": 16,
-            "revenue_range": [450000, 800000],
-            "transactions": [
-                {"naics": "311999", "revenue": 780000, "sde": 245000, "adj_ebitda": 175000, "price": 650000, "rev_mult": 0.83, "sde_mult": 2.65, "ebitda_mult": 3.71},
-                {"naics": "311999", "revenue": 750000, "sde": 225000, "adj_ebitda": 155000, "price": 580000, "rev_mult": 0.77, "sde_mult": 2.58, "ebitda_mult": 3.74},
-                {"naics": "311999", "revenue": 720000, "sde": 210000, "adj_ebitda": 140000, "price": 550000, "rev_mult": 0.76, "sde_mult": 2.62, "ebitda_mult": 3.93},
-                {"naics": "311999", "revenue": 690000, "sde": 195000, "adj_ebitda": 125000, "price": 520000, "rev_mult": 0.75, "sde_mult": 2.67, "ebitda_mult": 4.16},
-                {"naics": "311999", "revenue": 650000, "sde": 180000, "adj_ebitda": 110000, "price": 485000, "rev_mult": 0.75, "sde_mult": 2.69, "ebitda_mult": 4.41},
-                {"naics": "311999", "revenue": 620000, "sde": 170000, "adj_ebitda": 100000, "price": 465000, "rev_mult": 0.75, "sde_mult": 2.74, "ebitda_mult": 4.65},
-                {"naics": "311999", "revenue": 585000, "sde": 160000, "adj_ebitda": 90000, "price": 445000, "rev_mult": 0.76, "sde_mult": 2.78, "ebitda_mult": 4.94},
-                {"naics": "311999", "revenue": 550000, "sde": 150000, "adj_ebitda": 80000, "price": 420000, "rev_mult": 0.76, "sde_mult": 2.8, "ebitda_mult": 5.25},
-                {"naics": "311999", "revenue": 520000, "sde": 142000, "adj_ebitda": 72000, "price": 395000, "rev_mult": 0.76, "sde_mult": 2.78, "ebitda_mult": 5.49},
-                {"naics": "311999", "revenue": 490000, "sde": 135000, "adj_ebitda": 65000, "price": 375000, "rev_mult": 0.77, "sde_mult": 2.78, "ebitda_mult": 5.77},
-                {"naics": "311999", "revenue": 470000, "sde": 128000, "adj_ebitda": 58000, "price": 355000, "rev_mult": 0.76, "sde_mult": 2.77, "ebitda_mult": 6.12},
-                {"naics": "311999", "revenue": 460000, "sde": 125000, "adj_ebitda": 55000, "price": 345000, "rev_mult": 0.75, "sde_mult": 2.76, "ebitda_mult": 6.27},
-                {"naics": "311999", "revenue": 450000, "sde": 120000, "adj_ebitda": 50000, "price": 330000, "rev_mult": 0.73, "sde_mult": 2.75, "ebitda_mult": 6.6},
-                {"naics": "311194", "revenue": 800000, "sde": 260000, "adj_ebitda": 190000, "price": 695000, "rev_mult": 0.87, "sde_mult": 2.67, "ebitda_mult": 3.66},
-                {"naics": "311194", "revenue": 680000, "sde": 185000, "adj_ebitda": 115000, "price": 510000, "rev_mult": 0.75, "sde_mult": 2.76, "ebitda_mult": 4.43},
-                {"naics": "311194", "revenue": 560000, "sde": 155000, "adj_ebitda": 85000, "price": 425000, "rev_mult": 0.76, "sde_mult": 2.74, "ebitda_mult": 5.0}
-            ]
+            "count": len(transactions),
+            "revenue_range": revenue_range,
+            "transactions": transactions
         }
     }
     
@@ -973,8 +1304,10 @@ with tab4:
                   delta=f"{total_adjustment_pct:+.1f}%")
     with col2:
         st.metric("Weighted Avg Revenue", f"${weighted_avg_revenue:,.0f}")
+        st.metric("Comparable Transactions", len(transactions))
     with col3:
         st.metric("Weighted Avg SDE", f"${weighted_avg_sde:,.0f}")
+        st.metric("Revenue Multiple", f"{revenue_multiple}x")
     
     st.divider()
     
@@ -998,6 +1331,16 @@ with tab4:
             st.metric("Avg Score", f"{avg_score:.2f}/5", delta=None)
         with col3:
             st.metric("Adjustment", f"{adjustment:+.2f}%")
+    
+    st.divider()
+    
+    # Comparables preview
+    st.subheader("📋 Comparable Transactions Preview")
+    st.info(f"Found {len(transactions)} comparable transactions. Amounts converted from USD to CAD at rate of {USD_TO_CAD}.")
+    
+    if transactions:
+        trans_df = pd.DataFrame(transactions[:10])  # Show first 10
+        st.dataframe(trans_df, use_container_width=True)
     
     st.divider()
     
@@ -1029,31 +1372,30 @@ with st.sidebar:
        - Enter company name
        - Select NAICS code from hierarchical menus
        - Adjust industry benchmarks
+    
     2. **Financial Data**: 
        - Upload CSV/Excel or use default data
        - Map uploaded columns to required fields
        - Edit tables directly
        - Delete unwanted years
+    
     3. **Scorecard**: Rate qualitative factors (1-5)
        - 1 = Poor/Needs Improvement
        - 3 = Average/Neutral
        - 5 = Excellent/Best
+    
     4. **Export**: 
        - Review summary and adjustments
        - Download JSON file
        - Generate PDF report
     
-    ### Data Upload Tips
-    - Structure data with years as rows
-    - Include clear column headers
-    - The app uses fuzzy matching to map fields
-    - Review and adjust mappings before processing
+    ### PeerComps Integration
     
-    ### Scorecard Impact
-    - Each section has a weight (% of valuation)
-    - Scores above 3 increase valuation
-    - Scores below 3 decrease valuation
-    - Total adjustment: ±25% maximum
+    The app automatically searches the PeerComps dataset for comparable transactions based on:
+    - NAICS code match (6, 5, 4, or 3 digit)
+    - Similar revenue (50%-200% of your business)
+    - Recent years (last 5 years)
+    - USD amounts converted to CAD at 1.40
     
     ### Generate Report
     ```bash
@@ -1062,12 +1404,16 @@ with st.sidebar:
     ```
     
     ### Dependencies
-    Install required packages:
     ```bash
-    pip install streamlit pandas rapidfuzz
+    pip install streamlit pandas rapidfuzz openpyxl
     ```
     """)
     
     st.divider()
     
-    st.info("💡 **Tip**: The projection year is automatically calculated using the average growth rate from your historical data.")
+    # Show dataset status
+    df = load_peercomps()
+    if df is not None:
+        st.success(f"✅ PeerComps dataset loaded ({len(df):,} transactions)")
+    else:
+        st.warning("⚠️ PeerComps dataset not found. Using sample data.")

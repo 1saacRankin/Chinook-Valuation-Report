@@ -9,6 +9,7 @@
 *.toc
 *.json
 *.out
+*.xlsx
 
 # scrap folder
 scrap/

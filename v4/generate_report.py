@@ -41,6 +41,8 @@ def escape_latex(text):
         '}': '\\}',
         '~': '\\textasciitilde{}',
         '^': '\\textasciicircum{}',
+        '<': '\\textless{}',
+        '>': '\\textgreater{}',
     }
     for old, new in replacements.items():
         text = text.replace(old, new)
@@ -168,6 +170,7 @@ def generate_latex(data):
     report_date = data.get('company', {}).get('report_date', 'Unknown Date')
     mpsp = data.get('valuation', {}).get('mpsp', 0)
     naics = data.get('company', {}).get('naics_code', 'Unknown')
+    usd_to_cad = data.get('valuation', {}).get('usd_to_cad_rate', None)
     
     # Calculate scorecard ranges
     min_val = data.get('scorecard', {}).get('minimum_valuation', int(mpsp * 0.75))
@@ -198,6 +201,12 @@ def generate_latex(data):
 \usepackage{amsmath}
 \usepackage{tikz}
 \usepackage[hidelinks]{hyperref}
+
+% Turn off indent
+\setlength{\parindent}{0pt}
+
+% Vertical space between paragraphs
+\setlength{\parskip}{8pt}
 
 % Define colors
 \definecolor{primarypurple}{RGB}{102,45,145}
@@ -234,33 +243,33 @@ def generate_latex(data):
 
 \begin{document}
 
-% Title Page (no page number)
+% Title Page (no page number, zero margins)
+\newgeometry{margin=0in}
 \thispagestyle{empty}
 \pagenumbering{gobble}
 
-\begin{center}
 \vspace*{2cm}
-\includegraphics[width=0.5\textwidth]{Chinook_logo.png}
+\hspace{1cm}
+\includegraphics[width=0.65\textwidth]{Chinook_logo.png}
 \vspace{2cm}
-\end{center}
 
 % Full-width black rectangle
 \noindent\colorbox{black}{%
-  \parbox{\dimexpr\textwidth-2\fboxsep\relax}{%
+  \parbox{\textwidth}{%
     \vspace{1.2cm}
-    {\Huge\bfseries\textcolor{white}{Most Probable Selling Price}\par}
-    \vspace{0.3cm}
-    {\Huge\bfseries\textcolor{white}{Report}\par}
+    \hspace{1cm}
+    {\Huge\bfseries\textcolor{white}{Most Probable Selling Price Report}\par}
     \vspace{1.2cm}
+    \hspace{1cm}
     {\LARGE\bfseries\textcolor{white}{''' + company_name + r'''}\par}
     \vspace{0.4cm}
-    {\Large\textcolor{white}{''' + report_date + r'''}\par}
+    \hspace{1cm}
+    {\LARGE\textcolor{white}{''' + report_date + r'''}\par}
     \vspace{1.2cm}
   }%
 }
 
-
-
+\restoregeometry
 \clearpage
 
 % Table of Contents (start page numbering at 2)
@@ -326,8 +335,6 @@ This adjusted profit is known as SDE (Seller's Discretionary Earnings). SDE coul
 \section*{Valuation}
 \addcontentsline{toc}{section}{Valuation}
 
-\vspace{1cm}
-
 \begin{minipage}[t]{0.55\textwidth}
 \vspace{0pt}
 \noindent
@@ -365,7 +372,17 @@ Adj. EBITDA & ''' + str(data.get('valuation', {}).get('adj_ebitda_multiple', 0))
 \end{minipage}
 
 \vspace{0.5cm}
+'''
+    
+    # Add currency conversion note if USD to CAD rate is provided
+    if usd_to_cad:
+        latex += r'''
+\textit{\small Note: Comparable transaction data sourced from U.S. market transactions. All amounts have been converted from USD to CAD at an exchange rate of ''' + str(usd_to_cad) + r'''. This conversion rate is an estimate and actual currency fluctuations may affect valuations.}
 
+\vspace{0.3cm}
+'''
+    
+    latex += r'''
 See Appendix A for comparable transactions.
 
 \clearpage
@@ -406,7 +423,7 @@ See Appendix A for comparable transactions.
 
 \begin{tabular}{ll}
 \textbf{Name of Business:} & ''' + company_name + r''' \\
-\textbf{NAICS Industry Code:} & ''' + naics + r''' \\
+\textbf{NAICS Industry Code:} & ''' + escape_latex(naics) + r''' \\
 \textbf{MPSP:} & ''' + format_currency(mpsp) + r''' \\
 \end{tabular}
 
@@ -460,7 +477,7 @@ See Appendix A for comparable transactions.
 
 \vspace{0.3cm}
 
-\textit{\small Note: Projected year is calculated average growth rate of each item.}
+\textit{\small Note: Projected year is calculated from the year to date statement from January 1 to September 30.}
 
 \clearpage
 '''
@@ -494,6 +511,7 @@ The Asset Based Approach are often appropriate in the following situations:
 
 As such, the asset approach is for businesses where a large amount of the value is in its tangible assets. Or the business is not generating a high enough return on its assets to warrant ``excess earnings'' or ``goodwill''.
 
+\clearpage
 \subsection*{3. Market Based Approaches:}
 
 The market-based approach studies recent sales of similar assets, making adjustments for the differences between them. This is similar to how the real estate industry uses ``market comps'' to determine a listing price.
@@ -519,16 +537,18 @@ The algorithm selects businesses that are similar in terms of NAICS code and ann
 \hfill
 \begin{minipage}[t]{0.48\textwidth}
 \vspace{0pt}
-Based on information you provide in the financial tables, the report then assigns your business a median business value. That means that if the report finds 15 businesses that were similar it would assign your business the middle value.
+Based on information you provide in the financial tables, the report then assigns your business a median business value. That means that if the report finds 15 businesses that were similar it would assign your business the middle value (left).
 \end{minipage}
 
 \vspace{0.5cm}
 
 \subsection*{The Art}
 
+The next part of the process involves taking the answers to the questions we ask and trying to determine if your business is more or less attractive than average.
+
 \begin{minipage}[t]{0.48\textwidth}
 \vspace{0pt}
-The next part of the process involves taking the answers to the questions we ask and trying to determine if your business is more or less attractive than average.
+This report uses your answers to more accurately position your business on the chart. If your answers suggest that your business is a little better than the average in the dataset, the report will assign a higher Most Probable Selling Price to your business. Conversely, if there are opportunities to improve your business that haven't yet been acted on, the report will assign a lower MPSP.
 \end{minipage}%
 \hfill
 \begin{minipage}[t]{0.48\textwidth}
@@ -659,7 +679,9 @@ Replace owner & ''' + format_currency(norm.get('manager_salary', [0]*5)[4]) + r'
 
 In its simplest definition, adjusted EBITDA is a measure of a company's financial performance, acting as an alternative to other metrics like revenue, earnings or net income.
 
-Adjusted EBITDA is how many people determine business value as it places the focus on the financial outcome of operating decisions. It does this by removing the impacts of non-operating decisions made by the existing management, such as interest expenses, tax rates, or significant intangible assets. This leaves a figure that better reflects the operating profitability of a business, one that can effectively be compared between companies by owners, buyers and investors. It is for that reason many employ adjusted EBITDA over other metrics when deciding which organization is more attractive.
+Adjusted EBITDA is how many people determine business value as it places the focus on the financial outcome of operating decisions. It does this by removing the impacts of non-operating decisions made by the existing management, such as interest expenses, tax rates, or significant intangible assets. 
+
+This leaves a figure that better reflects the operating profitability of a business, one that can effectively be compared between companies by owners, buyers and investors. It is for that reason many employ adjusted EBITDA over other metrics when deciding which organization is more attractive.
 
 \clearpage
 
@@ -1079,7 +1101,17 @@ When businesses have an existing marketing plan and established brand, obtaining
 \addcontentsline{toc}{section}{Appendix A}
 
 \subsection*{Comparable Transactions}
+'''
+    
+    # Add currency note if applicable
+    if usd_to_cad:
+        latex += r'''
+\textit{\small Note: All comparable transaction amounts have been converted from USD to CAD at an exchange rate of ''' + str(usd_to_cad) + r'''.}
 
+\vspace{0.5cm}
+'''
+    
+    latex += r'''
 \begin{center}
 \tiny
 \begin{longtable}{|l|r|r|r|r|r|r|r|}

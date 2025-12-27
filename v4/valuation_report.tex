@@ -16,6 +16,12 @@
 \usepackage{tikz}
 \usepackage[hidelinks]{hyperref}
 
+% Turn off indent
+\setlength{\parindent}{0pt}
+
+% Vertical space between paragraphs
+\setlength{\parskip}{8pt}
+
 % Define colors
 \definecolor{primarypurple}{RGB}{102,45,145}
 \definecolor{lightgray}{RGB}{240,240,240}
@@ -51,33 +57,33 @@
 
 \begin{document}
 
-% Title Page (no page number)
+% Title Page (no page number, zero margins)
+\newgeometry{margin=0in}
 \thispagestyle{empty}
 \pagenumbering{gobble}
 
-\begin{center}
 \vspace*{2cm}
-\includegraphics[width=0.5\textwidth]{Chinook_logo.png}
+\hspace{1cm}
+\includegraphics[width=0.65\textwidth]{Chinook_logo.png}
 \vspace{2cm}
-\end{center}
 
 % Full-width black rectangle
 \noindent\colorbox{black}{%
-  \parbox{\dimexpr\textwidth-2\fboxsep\relax}{%
+  \parbox{\textwidth}{%
     \vspace{1.2cm}
-    {\Huge\bfseries\textcolor{white}{Most Probable Selling Price}\par}
-    \vspace{0.3cm}
-    {\Huge\bfseries\textcolor{white}{Report}\par}
+    \hspace{1cm}
+    {\Huge\bfseries\textcolor{white}{Most Probable Selling Price Report}\par}
     \vspace{1.2cm}
+    \hspace{1cm}
     {\LARGE\bfseries\textcolor{white}{Persaj Countertops Inc.}\par}
     \vspace{0.4cm}
-    {\Large\textcolor{white}{November 22, 2025}\par}
+    \hspace{1cm}
+    {\LARGE\textcolor{white}{November 22, 2025}\par}
     \vspace{1.2cm}
   }%
 }
 
-
-
+\restoregeometry
 \clearpage
 
 % Table of Contents (start page numbering at 2)
@@ -143,8 +149,6 @@ This adjusted profit is known as SDE (Seller's Discretionary Earnings). SDE coul
 \section*{Valuation}
 \addcontentsline{toc}{section}{Valuation}
 
-\vspace{1cm}
-
 \begin{minipage}[t]{0.55\textwidth}
 \vspace{0pt}
 \noindent
@@ -152,13 +156,13 @@ Based on the information provided, the report has determined the Most Probable S
 
 \vspace{0.5cm}
 
-{\Huge\bfseries\color{primarypurple} \$2,784,822}
+{\Huge\bfseries\color{primarypurple} \$2,624,652}
 
 \vspace{1cm}
 
 \subsection*{Valuation Multiples}
 
-This price was determined using a market-based approach which examined 16 comparable transactions. These transactions included businesses with revenues between \$2,816,110 and \$3,705,479. An asking price of \$2,784,822 represents the following valuation multiples:
+This price was determined using a market-based approach which examined 16 comparable transactions. These transactions included businesses with revenues between \$2,816,110 and \$3,705,479. An asking price of \$2,624,652 represents the following valuation multiples:
 \end{minipage}%
 \hfill
 \begin{minipage}[t]{0.4\textwidth}
@@ -192,7 +196,7 @@ See Appendix A for comparable transactions.
 \begin{tabular}{ll}
 \textbf{Name of Business:} & Persaj Countertops Inc. \\
 \textbf{NAICS Industry Code:} & Wood Kitchen Cabinet and Countertop Manufacturing (33711) \\
-\textbf{MPSP:} & \$2,784,822 \\
+\textbf{MPSP:} & \$2,624,652 \\
 \end{tabular}
 
 \vspace{0.5cm}
@@ -239,13 +243,13 @@ See Appendix A for comparable transactions.
 \begin{tabular}{ll}
 \textbf{Weighted Average of Revenue} & \$3,138,093 \\
 \textbf{MPSP Multiple of Revenue} & 0.84 \\
-\textbf{Weighted Average of SDE} & \$699,773 \\
+\textbf{Weighted Average of SDE} & \$709,773 \\
 \textbf{MPSP Multiple of SDE} & 3.7 \\
 \end{tabular}
 
 \vspace{0.3cm}
 
-\textit{\small Note: Projected year is calculated average growth rate of each item.}
+\textit{\small Note: Projected year is calculated from the year to date statement from January 1 to September 30.}
 
 \clearpage
 \section*{Valuation Methodologies}
@@ -276,6 +280,7 @@ The Asset Based Approach are often appropriate in the following situations:
 
 As such, the asset approach is for businesses where a large amount of the value is in its tangible assets. Or the business is not generating a high enough return on its assets to warrant ``excess earnings'' or ``goodwill''.
 
+\clearpage
 \subsection*{3. Market Based Approaches:}
 
 The market-based approach studies recent sales of similar assets, making adjustments for the differences between them. This is similar to how the real estate industry uses ``market comps'' to determine a listing price.
@@ -301,16 +306,18 @@ The algorithm selects businesses that are similar in terms of NAICS code and ann
 \hfill
 \begin{minipage}[t]{0.48\textwidth}
 \vspace{0pt}
-Based on information you provide in the financial tables, the report then assigns your business a median business value. That means that if the report finds 15 businesses that were similar it would assign your business the middle value.
+Based on information you provide in the financial tables, the report then assigns your business a median business value. That means that if the report finds 15 businesses that were similar it would assign your business the middle value (left).
 \end{minipage}
 
 \vspace{0.5cm}
 
 \subsection*{The Art}
 
+The next part of the process involves taking the answers to the questions we ask and trying to determine if your business is more or less attractive than average.
+
 \begin{minipage}[t]{0.48\textwidth}
 \vspace{0pt}
-The next part of the process involves taking the answers to the questions we ask and trying to determine if your business is more or less attractive than average.
+This report uses your answers to more accurately position your business on the chart. If your answers suggest that your business is a little better than the average in the dataset, the report will assign a higher Most Probable Selling Price to your business. Conversely, if there are opportunities to improve your business that haven't yet been acted on, the report will assign a lower MPSP.
 \end{minipage}%
 \hfill
 \begin{minipage}[t]{0.48\textwidth}
@@ -435,7 +442,9 @@ Replace owner & \$120,000 & \$120,000 & \$110,000 & \$100,000 & \$90,000 & \\
 
 In its simplest definition, adjusted EBITDA is a measure of a company's financial performance, acting as an alternative to other metrics like revenue, earnings or net income.
 
-Adjusted EBITDA is how many people determine business value as it places the focus on the financial outcome of operating decisions. It does this by removing the impacts of non-operating decisions made by the existing management, such as interest expenses, tax rates, or significant intangible assets. This leaves a figure that better reflects the operating profitability of a business, one that can effectively be compared between companies by owners, buyers and investors. It is for that reason many employ adjusted EBITDA over other metrics when deciding which organization is more attractive.
+Adjusted EBITDA is how many people determine business value as it places the focus on the financial outcome of operating decisions. It does this by removing the impacts of non-operating decisions made by the existing management, such as interest expenses, tax rates, or significant intangible assets. 
+
+This leaves a figure that better reflects the operating profitability of a business, one that can effectively be compared between companies by owners, buyers and investors. It is for that reason many employ adjusted EBITDA over other metrics when deciding which organization is more attractive.
 
 \clearpage
 
@@ -493,7 +502,7 @@ On average, total employment costs in your industry are 22.00\% of revenue. In c
 
 \subsection*{Valuation Range}
 
-Sometimes the numbers don't represent the true value of a business. Scorecard values can change the valuation by +/- 25\% of the base valuation. The chart below show the valuation range for Persaj Countertops Inc. based on the scorecard answers. A totally optimized scorecard would give a business valuation of \$3,294,997.
+Sometimes the numbers don't represent the true value of a business. Scorecard values can change the valuation by +/- 25\% of the base valuation. The chart below show the valuation range for Persaj Countertops Inc. based on the scorecard answers. A totally optimized scorecard would give a business valuation of \$3,371,421.
 
 \vspace{0.5cm}
 
@@ -505,11 +514,11 @@ Sometimes the numbers don't represent the true value of a business. Scorecard va
 \draw[thick] (0,0) -- (0,0.6);
 \draw[thick] (12,0) -- (12,0.6);
 % Draw the purple circle
-\fill[primarypurple] (7.355004062977286,0.3) circle (0.35);
+\fill[primarypurple] (5.355004716113685,0.3) circle (0.35);
 % Add labels below
-\node[anchor=north,font=\small] at (0,-0.2) {\$1,976,998};
-\node[anchor=north,font=\bfseries\large] at (6,-0.2) {\$2,784,822};
-\node[anchor=north,font=\small] at (12,-0.2) {\$3,294,997};
+\node[anchor=north,font=\small] at (0,-0.2) {\$2,022,853};
+\node[anchor=north,font=\bfseries\large] at (6,-0.2) {\$2,624,652};
+\node[anchor=north,font=\small] at (12,-0.2) {\$3,371,421};
 \end{tikzpicture}
 \end{center}
 
@@ -558,9 +567,9 @@ Are your payables always paid in full and on-time? & Yes \\
 % Draw the circle at the score position
 \fill[primarypurple] (6.0,0.3) circle (0.25);
 % Labels
-\node[anchor=north,font=\small] at (0,-0.2) {\$-174,051};
+\node[anchor=north,font=\small] at (0,-0.2) {\$-164,040};
 \node[anchor=north,font=\small] at (4.0,-0.2) {0};
-\node[anchor=north,font=\small] at (8,-0.2) {\$174,051};
+\node[anchor=north,font=\small] at (8,-0.2) {\$164,040};
 \end{tikzpicture}
 \end{center}
 
@@ -590,7 +599,7 @@ Would your company thrive if you left for 2 months? & Rarely \\
 Have you taken a vacation longer than 1 month in the past 2 years? & Usually \\
 \hline
 \rowcolor{tableodd}
-On a normal day, what percentage of customers ask for you by name? & <5\% \\
+On a normal day, what percentage of customers ask for you by name? & \textless{}5\% \\
 \hline
 \end{tabular}
 \end{center}
@@ -609,9 +618,9 @@ On a normal day, what percentage of customers ask for you by name? & <5\% \\
 % Draw the circle at the score position
 \fill[primarypurple] (5.34,0.3) circle (0.25);
 % Labels
-\node[anchor=north,font=\small] at (0,-0.2) {\$-174,051};
+\node[anchor=north,font=\small] at (0,-0.2) {\$-164,040};
 \node[anchor=north,font=\small] at (4.0,-0.2) {0};
-\node[anchor=north,font=\small] at (8,-0.2) {\$174,051};
+\node[anchor=north,font=\small] at (8,-0.2) {\$164,040};
 \end{tikzpicture}
 \end{center}
 
@@ -658,9 +667,9 @@ In your current space and with your current equipment, by how much could you inc
 % Draw the circle at the score position
 \fill[primarypurple] (5.0,0.3) circle (0.25);
 % Labels
-\node[anchor=north,font=\small] at (0,-0.2) {\$-104,430};
+\node[anchor=north,font=\small] at (0,-0.2) {\$-98,424};
 \node[anchor=north,font=\small] at (4.0,-0.2) {0};
-\node[anchor=north,font=\small] at (8,-0.2) {\$104,430};
+\node[anchor=north,font=\small] at (8,-0.2) {\$98,424};
 \end{tikzpicture}
 \end{center}
 
@@ -708,9 +717,9 @@ Which one of these best describes your revenue model? & Some repeat customers \\
 % Draw the circle at the score position
 \fill[primarypurple] (2.0,0.3) circle (0.25);
 % Labels
-\node[anchor=north,font=\small] at (0,-0.2) {\$-69,620};
+\node[anchor=north,font=\small] at (0,-0.2) {\$-65,616};
 \node[anchor=north,font=\small] at (4.0,-0.2) {0};
-\node[anchor=north,font=\small] at (8,-0.2) {\$69,620};
+\node[anchor=north,font=\small] at (8,-0.2) {\$65,616};
 \end{tikzpicture}
 \end{center}
 
@@ -736,7 +745,7 @@ Not all companies can transition their customers to a recurring revenue model, b
 \textcolor{white}{\textbf{Question}} & \textcolor{white}{\textbf{Answer}} \\
 \hline
 \rowcolor{tableodd}
-How much revenue does your largest customer represent? & <5\% \\
+How much revenue does your largest customer represent? & \textless{}5\% \\
 \hline
 \rowcolor{white}
 How much revenue does your 5 largest customers represent? & 6-15\% \\
@@ -767,9 +776,9 @@ Could you easily replace the most important outside supplier to your business? &
 % Draw the circle at the score position
 \fill[primarypurple] (4.8,0.3) circle (0.25);
 % Labels
-\node[anchor=north,font=\small] at (0,-0.2) {\$-104,430};
+\node[anchor=north,font=\small] at (0,-0.2) {\$-98,424};
 \node[anchor=north,font=\small] at (4.0,-0.2) {0};
-\node[anchor=north,font=\small] at (8,-0.2) {\$104,430};
+\node[anchor=north,font=\small] at (8,-0.2) {\$98,424};
 \end{tikzpicture}
 \end{center}
 
@@ -820,9 +829,9 @@ Do you have a written customer acquisition strategy? & Rarely \\
 % Draw the circle at the score position
 \fill[primarypurple] (4.0,0.3) circle (0.25);
 % Labels
-\node[anchor=north,font=\small] at (0,-0.2) {\$-69,620};
+\node[anchor=north,font=\small] at (0,-0.2) {\$-65,616};
 \node[anchor=north,font=\small] at (4.0,-0.2) {0};
-\node[anchor=north,font=\small] at (8,-0.2) {\$69,620};
+\node[anchor=north,font=\small] at (8,-0.2) {\$65,616};
 \end{tikzpicture}
 \end{center}
 
